@@ -1,5 +1,6 @@
 #include "list.h"
-#include "../debug.h"
+#include <assert.h>	// Instead of	#include "../debug.h"
+#define ASSERT(CONDITION) assert(CONDITION)	// patched for proj0-2
 
 /* Our doubly linked lists have two header elements: the "head"
    just before the first element and the "tail" just after the
@@ -32,7 +33,7 @@
    operations, which can be valuable.) */
 
 static bool is_sorted (struct list_elem *a, struct list_elem *b,
-                       list_less_func *less, void *aux) UNUSED;
+                       list_less_func *less, void *aux);// Remove KERNEL MACRO 'UNUSED';
 
 /* Returns true if ELEM is a head, false otherwise. */
 static inline bool
@@ -222,13 +223,21 @@ list_push_back (struct list *list, struct list_elem *elem)
 /* Removes ELEM from its list and returns the element that
    followed it.  Undefined behavior if ELEM is not in a list.
 
-   A list element must be treated very carefully after removing
-   it from its list.  Calling list_next() or list_prev() on ELEM
-   will return the item that was previously before or after ELEM,
-   but, e.g., list_prev(list_next(ELEM)) is no longer ELEM!
+   It's not safe to treat ELEM as an element in a list after
+   removing it.  In particular, using list_next() or list_prev()
+   on ELEM after removal yields undefined behavior.  This means
+   that a naive loop to remove the elements in a list will fail:
 
-   The list_remove() return value provides a convenient way to
-   iterate and remove elements from a list:
+   ** DON'T DO THIS **
+   for (e = list_begin (&list); e != list_end (&list); e = list_next (e))
+     {
+       ...do something with e...
+       list_remove (e);
+     }
+   ** DON'T DO THIS **
+
+   Here is one correct way to iterate and remove elements from a
+   list:
 
    for (e = list_begin (&list); e != list_end (&list); e = list_remove (e))
      {
@@ -521,4 +530,37 @@ list_min (struct list *list, list_less_func *less, void *aux)
           min = e; 
     }
   return min;
+}
+
+/* Pintos 0-2 Project */
+
+/* Find list begin using list_elem */
+struct list_elem * list_begin_listElem (struct list_elem* a) {
+  struct list_elem* mov = a;
+  while (mov->prev != NULL) {
+    mov = mov->prev;
+  }
+  return mov;
+}
+
+void list_swap(struct list_elem* a, struct list_elem* b) {
+  ASSERT(is_interior(a) && is_interior(b));
+
+  struct list_elem* temp = NULL;
+  
+  temp = a->prev;
+  a->prev = b->prev;
+  b->prev = temp;
+
+  temp = a->next;
+  a->next = b->next;
+  b->next = temp;
+
+  struct list_elem* begin_a = list_begin_listElem(a);
+  struct list_elem* begin_b = list_begin_listElem(b);
+
+}
+
+void list_shuffle(struct list* list) {
+
 }
