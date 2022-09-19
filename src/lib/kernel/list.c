@@ -1,4 +1,6 @@
 #include "list.h"
+#include <math.h>
+#include <stdlib.h>
 #include <assert.h>	// Instead of	#include "../debug.h"
 #define ASSERT(CONDITION) assert(CONDITION)	// patched for proj0-2
 
@@ -544,9 +546,9 @@ struct list_elem * list_begin_listElem (struct list_elem* a) {
 }
 
 void list_swap(struct list_elem* a, struct list_elem* b) {
-  ASSERT(is_interior(a) && is_interior(b));
+  ASSERT(is_interior(a) && is_interior(b)); //Head, Tail이 아닌지 확인한다.
 
-  struct list_elem* temp = NULL;
+  struct list_elem* temp = NULL; //Pointer swap을 위한 temp
   
   temp = a->prev;
   a->prev = b->prev;
@@ -556,11 +558,41 @@ void list_swap(struct list_elem* a, struct list_elem* b) {
   a->next = b->next;
   b->next = temp;
 
-  struct list_elem* begin_a = list_begin_listElem(a);
-  struct list_elem* begin_b = list_begin_listElem(b);
 
+  // struct list_elem* begin_a = list_begin_listElem(a); //a, b의 값에 접근하기 위해서 head를 찾는다.
+  // struct list_elem* begin_b = list_begin_listElem(b);
+
+  struct node* value_a = list_entry(a, struct node, elem); //a, b의 value를 찾는다.
+  struct node* value_b = list_entry(b, struct node, elem);
+
+  int tempValue = value_a->data; //value를 swap 한다.
+  value_a->data = value_b->data;
+  value_b->data = tempValue;
 }
 
 void list_shuffle(struct list* list) {
+  srand(time(NULL));
 
+  int hop; //node 몇 개 건너뛸지 
+  struct list_elem* mov = NULL; //list를 탐색하는 iterator
+
+  struct list* newList = malloc(sizeof(struct list)); //shuffle된 list를 담는 새로운 list pointer
+  list_init(newList);
+
+  while (!list_empty(list)) { 
+    hop = rand() % 5 + 1;
+    mov = list_begin(list); 
+
+    while (hop--) { //hop칸 만큼 iteration한 뒤 나오는 list_elem을 mov에 저장한다.
+      if (is_tail(list_next(mov))) mov = list_begin(list); //다음 칸이 tail일 경우 맨 앞으로 데려간다.
+      else mov = list_next(mov);
+    }
+
+    struct node* temp = malloc(sizeof(struct node)); //새로운 node를 만든 뒤, 데이터를 집어 넣는다.
+    temp->data = list_entry(mov, struct node, elem)->data;
+    list_insert(list_head(newList), &(temp->elem));
+
+    list_remove(mov); //list에서 삭제한 뒤 동적 할당을 해제한다.
+    free(mov);
+  }
 }
