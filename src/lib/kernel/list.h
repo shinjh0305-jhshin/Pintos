@@ -173,5 +173,8 @@ struct list_elem *list_min (struct list *, list_less_func *, void *aux);
 
 /* Pintos 0-2 Project */
 void list_swap(struct list_elem *a, struct list_elem *b);
+void list_shuffle(struct list* list);
+void list_print(struct list* list);
+void list_free(struct list* list);
 
 #endif /* lib/kernel/list.h */

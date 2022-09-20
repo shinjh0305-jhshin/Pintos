@@ -545,19 +545,11 @@ struct list_elem * list_begin_listElem (struct list_elem* a) {
   return mov;
 }
 
+/* Swaps position of two list_elems */
 void list_swap(struct list_elem* a, struct list_elem* b) {
   ASSERT(is_interior(a) && is_interior(b)); //Head, Tail이 아닌지 확인한다.
 
-  struct list_elem* temp = NULL; //Pointer swap을 위한 temp
-  
-  temp = a->prev;
-  a->prev = b->prev;
-  b->prev = temp;
-
-  temp = a->next;
-  a->next = b->next;
-  b->next = temp;
-
+  swap(&a, &b); //list_elem을 swap한다. 아직 value는 swap 되지 않았다.
 
   // struct list_elem* begin_a = list_begin_listElem(a); //a, b의 값에 접근하기 위해서 head를 찾는다.
   // struct list_elem* begin_b = list_begin_listElem(b);
@@ -570,6 +562,7 @@ void list_swap(struct list_elem* a, struct list_elem* b) {
   value_b->data = tempValue;
 }
 
+/* Randomly shuffles the order of list_elem in list */
 void list_shuffle(struct list* list) {
   srand(time(NULL));
 
@@ -580,7 +573,7 @@ void list_shuffle(struct list* list) {
   list_init(newList);
 
   while (!list_empty(list)) { 
-    hop = rand() % 5 + 1;
+    hop = rand() % 10 + 1;
     mov = list_begin(list); 
 
     while (hop--) { //hop칸 만큼 iteration한 뒤 나오는 list_elem을 mov에 저장한다.
@@ -592,7 +585,27 @@ void list_shuffle(struct list* list) {
     temp->data = list_entry(mov, struct node, elem)->data;
     list_insert(list_head(newList), &(temp->elem));
 
-    list_remove(mov); //list에서 삭제한 뒤 동적 할당을 해제한다.
-    free(mov);
+    list_remove(mov); //list에서 삭제한다.
+  }
+}
+
+/* Iterates list forwardly and print datas in the list_elem */
+void list_print(struct list* list) {
+  if (list_empty(list)) return; //빈 list일 경우, 개행문자도 출력하지 말고 return 한다.
+
+  struct list_elem* mov = list_back(list);
+
+  while (mov != list_tail(list)) {
+    printf("%d ", list_entry(mov, struct node, elem)->data);
+    mov = list_next(mov);
+  }
+
+  printf("/n");
+}
+
+/* Removes all nodes from the list */
+void list_free(struct list* list) {
+  while (!list_empty(list)) {
+    list_remove(list_begin(list));
   }
 }
