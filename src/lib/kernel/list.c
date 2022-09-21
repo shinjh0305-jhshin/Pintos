@@ -1,6 +1,8 @@
 #include "list.h"
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 #include <assert.h>	// Instead of	#include "../debug.h"
 #define ASSERT(CONDITION) assert(CONDITION)	// patched for proj0-2
 
@@ -549,8 +551,15 @@ struct list_elem * list_begin_listElem (struct list_elem* a) {
 void list_swap(struct list_elem* a, struct list_elem* b) {
   ASSERT(is_interior(a) && is_interior(b)); //Head, Tail이 아닌지 확인한다.
 
-  swap(&a, &b); //list_elem을 swap한다. 아직 value는 swap 되지 않았다.
+  struct list_elem* temp = NULL; //Pointer swap을 위한 temp
 
+  temp = a->prev;
+  a->prev = b->prev;
+  b->prev = temp;
+
+  temp = a->next;
+  a->next = b->next;
+  b->next = temp;
   // struct list_elem* begin_a = list_begin_listElem(a); //a, b의 값에 접근하기 위해서 head를 찾는다.
   // struct list_elem* begin_b = list_begin_listElem(b);
 
@@ -593,14 +602,14 @@ void list_shuffle(struct list* list) {
 void list_print(struct list* list) {
   if (list_empty(list)) return; //빈 list일 경우, 개행문자도 출력하지 말고 return 한다.
 
-  struct list_elem* mov = list_back(list);
+  struct list_elem* mov = list_begin(list);
 
   while (mov != list_tail(list)) {
     printf("%d ", list_entry(mov, struct node, elem)->data);
     mov = list_next(mov);
   }
 
-  printf("/n");
+  printf("\n");
 }
 
 /* Removes all nodes from the list */
@@ -608,4 +617,13 @@ void list_free(struct list* list) {
   while (!list_empty(list)) {
     list_remove(list_begin(list));
   }
+}
+
+/* Compares given list_elem */
+bool list_compare(const struct list_elem *a, const struct list_elem *b, void *aux) {
+  int value_a = list_entry(a, struct node, elem)->data;
+  int value_b = list_entry(b, struct node, elem)->data;
+
+  if (value_a < value_b) return true;
+  else return false;
 }

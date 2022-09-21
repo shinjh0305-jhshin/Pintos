@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "list.h"
 #define SAME_STRING(a, b) strcmp((a), (b)) == 0
 
@@ -36,10 +37,10 @@ void do_list(char* operation) { //list 처리 함수
             }
         }
         else if (operation[6] == 'o') { //pop
-            if (operation[10] == 'b') { //pop_back
+            if (operation[9] == 'b') { //pop_back
                 list_pop_back(&list_pool[listIdx]);
             }
-            else if (operation[10] == 'f') { //pop_front
+            else if (operation[9] == 'f') { //pop_front
                 list_pop_front(&list_pool[listIdx]);
             }
         }
@@ -63,16 +64,61 @@ void do_list(char* operation) { //list 처리 함수
             list_shuffle(&list_pool[listIdx]);
         }
         else if (operation[6] == 'o') { //sort
-            
+            list_sort(&list_pool[listIdx], list_compare, NULL);
         }
         else if (operation[6] == 'p') { //splice
+            int pos, from, to, targetIdx; //pos 앞에 from부터 to까지를 삽입한다.
+            char targetList[20];
 
+            scanf("%d %s %d %d", &pos, targetList, &from, &to);
+
+            for (int i = 0; i < lists; i++) { //targetList를 찾는다.
+                if (SAME_STRING(targetList, list_name[i])) {
+                    targetIdx = i;
+                    break;
+                }
+            }
+
+            //list iterator
+            struct list_elem* _pos = list_begin(&list_pool[listIdx]); //targetPosition
+            struct list_elem* _from = list_begin(&list_pool[targetIdx]), *_to = list_begin(&list_pool[targetIdx]);
+
+            for (int i = 0; i < pos; i++) _pos = list_next(_pos);
+            for (int i = 0; i < from; i++) _from = list_next(_from);
+            for (int i = 0; i < to; i++) _to = list_next(_to);
+
+            list_splice(_pos, _from, _to);
         }
         else if (operation[6] == 'w') { //swap
+            int pos1, pos2;
+            scanf("%d %d", &pos1, &pos2);
 
+            struct list_elem* _pos1 = list_begin(&list_pool[listIdx]);
+            struct list_elem* _pos2 = list_begin(&list_pool[listIdx]);
+
+            for (int i = 0; i < pos1; i++) _pos1 = list_next(_pos1);
+            for (int i = 0; i < pos2; i++) _pos2 = list_next(_pos2);
+
+            list_swap(_pos1, _pos2);
         }
     }
+    else if (operation[5] == 'u') {
+        char duplicates[20]; //duplicate list name
+        int dupIdx = -1; //duplicates' index. -1 is a flag of NULL.
 
+        if (getchar() != '\n') { //duplicates가 입력으로 주어지는지 확인한다.
+            scanf("%s", duplicates);
+            for (int i = 0; i < lists; i++) {
+                if (SAME_STRING(duplicates, list_name[i])) {
+                    dupIdx = i;
+                    break;
+                }
+            }
+        }
+
+        if (dupIdx == -1) list_unique(&list_pool[listIdx], NULL, list_compare, NULL); //duplicates가 주어지지 않은 경우
+        else list_unique(&list_pool[listIdx], &list_pool[dupIdx], list_compare, NULL);
+    }
 }
 
 int main() {
@@ -90,6 +136,7 @@ int main() {
             scanf("%s %s", dsType, dsName); //어떤 객체 종류인지를 확인한다.
 
             if (SAME_STRING(dsType, "list")) { //새로운 list를 만드는 경우
+                list_init(&list_pool[lists]);
                 strcpy(list_name[lists++], dsName);
             }
         }
@@ -111,4 +158,6 @@ int main() {
             return 1;
         }
     }
+
+    return 0;
 }

@@ -176,5 +176,6 @@ void list_swap(struct list_elem *a, struct list_elem *b);
 void list_shuffle(struct list* list);
 void list_print(struct list* list);
 void list_free(struct list* list);
+bool list_compare(const struct list_elem *a, const struct list_elem *b, void *aux);
 
 #endif /* lib/kernel/list.h */
