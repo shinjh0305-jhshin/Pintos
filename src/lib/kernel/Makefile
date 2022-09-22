@@ -3,7 +3,7 @@
 CC = gcc
 CFLAGS = -Wall -g
 TARGET = testlib
-OBJS = list.o main.o
+OBJS = list.o main.o hash.o
 SRCS = $(OBJS:.o=.c)
 
 $(TARGET) : $(OBJS)

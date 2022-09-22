@@ -2,13 +2,16 @@
 #include <string.h>
 #include <stdlib.h>
 #include "list.h"
+#include "hash.h"
 #define SAME_STRING(a, b) strcmp((a), (b)) == 0
 
 char list_name[20][15]; //list의 이름을 모아놓는 변수
+char hash_name[20][15]; //hash의 이름을 모아놓는 변수
 struct list list_pool[15]; //list의 시작 끝을 모아놓는 변수
-int lists; //lists : list의 개수
+struct hash hash_pool[15];
+int lists, hashes; //lists : list의 개수, hashes : hash의 개수
 
-
+/* list_XXX 형태를 갖는 모든 operation을 관할*/
 void do_list(char* operation) { //list 처리 함수
     char dsName[20]; //list의 이름
     int listIdx, value; //list의 index
@@ -121,6 +124,74 @@ void do_list(char* operation) { //list 처리 함수
     }
 }
 
+/* hash_XXX 형태를 갖는 모든 operation을 관할 */
+void do_hash(char* operation) {
+    char dsName[20]; //hash의 이름
+    int hashIdx, value; //hash의 index
+
+    scanf("%s", dsName);
+
+    for (int i = 0; i < hashes; i++) {
+        if (SAME_STRING(dsName, hash_name[i])) {
+            hashIdx = i;
+            break;
+        }
+    }
+
+    if (operation[5] == 'i') { //insert
+        scanf("%d", &value); //hash에 넣을 값을 찾는다.
+        struct hash_node* temp = malloc(sizeof(struct hash_node));
+
+        temp->data = value;
+        hash_insert(&hash_pool[hashIdx], &(temp->elem));
+    }
+    else if (operation[5] == 'd') { //delete
+        scanf("%d", &value); //삭제 할 값을 입력받는다
+        struct hash_node temp;
+        temp.data = value;
+
+        hash_delete(&hash_pool[hashIdx], &(temp.elem)); //삭제 대상 값이 있는 hash_elem을 전달한다
+    }
+    else if (operation[5] == 'e') { //empty
+        if (hash_empty(&hash_pool[hashIdx])) printf("true\n");
+        else printf("false\n");
+    }
+    else if (operation[5] == 's') { //size
+        printf("%zu\n", hash_size(&hash_pool[hashIdx]));
+    }
+    else if (operation[5] == 'c') { //clear
+        hash_clear(&hash_pool[hashIdx], NULL);
+    }
+    else if (operation[5] == 'f') { //find
+        scanf("%d", &value);
+        struct hash_node target;
+        target.data = value;
+
+        struct hash_elem* temp = hash_find(&hash_pool[hashIdx], &(target.elem));
+
+        if (temp) //찾은 hash_elem이 존재하는 경우에만 print를 한다.
+            printf("%d\n", hash_entry(temp, struct hash_node, elem)->data);
+    }
+    else if (operation[5] == 'r') { //replace
+        scanf("%d", &value);
+        struct hash_node* temp = malloc(sizeof(struct hash_node));
+
+        temp->data = value;
+        hash_replace(&hash_pool[hashIdx], &(temp->elem));
+    }
+    else if (operation[5] == 'a') {
+        char powerOf[10]; //각 원소를 몇 승 할지 받는다
+        scanf("%s", powerOf);
+
+        if (powerOf[0] == 's') { //제곱
+            hash_apply(&(hash_pool[hashIdx]), hash_action_square);
+        }
+        else if (powerOf[0] == 't') { //세제곱
+            hash_apply(&(hash_pool[hashIdx]), hash_action_triple);
+        }
+    }
+}
+
 int main() {
     char temp[20], dsType[20], dsName[20]; //temp : 다목적, dsType : 객체 종류, dsName : 객체 이름
     
@@ -132,6 +203,9 @@ int main() {
         if (temp[0] == 'l') { //linked list와 관련된 함수일 경우 list 처리 함수를 호출한다.
             do_list(temp);
         }
+        else if(temp[0] == 'h') { //hash와 관련된 함수일 경우 list 처리 함수를 호출한다.
+            do_hash(temp); 
+        }
         else if (temp[0] == 'c') { //새로운 객체를 만든다.
             scanf("%s %s", dsType, dsName); //어떤 객체 종류인지를 확인한다.
 
@@ -139,19 +213,36 @@ int main() {
                 list_init(&list_pool[lists]);
                 strcpy(list_name[lists++], dsName);
             }
+            else if (SAME_STRING(dsType, "hashtable")) { //새로운 hash를 만드는 경우
+                hash_init(&hash_pool[hashes], hash_function, hash_compare, NULL);
+                strcpy(hash_name[hashes++], dsName);
+            }
         }
         else if (temp[0] == 'd') { //dumpdata or delete
             scanf("%s", dsName); //객체 이름부터 일단 받는다.
-            for (int i = 0; i < lists; i++) {
+            for (int i = 0; i < lists; i++) { //list 자료구조에 있는 이름인지 확인한다
                 if (SAME_STRING(list_name[i], dsName)) {
-                    if (temp[1] == 'u') { //dumpdata
+                    if (temp[1] == 'u') { //dumpdata list
                         list_print(&list_pool[i]);
                     }
-                    else { //delete
+                    else { //delete list
                         list_free(&list_pool[i]);
                     }
                 }
             }
+            for (int i = 0; i < hashes; i++) {
+                if (SAME_STRING(hash_name[i], dsName)) {
+                    if (temp[1] == 'u') { //dumpdata hash
+                        if (hash_empty(&hash_pool[i])) continue;
+                        hash_apply(&hash_pool[i], hash_action_print);
+                        printf("\n");
+                    }
+                    else { //delete hash
+                        hash_destroy(&hash_pool[i], NULL);
+                    }
+                }
+            }
+
         }
         else {
             printf("Invalid Input has been applied.\n");
