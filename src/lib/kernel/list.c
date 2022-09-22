@@ -538,30 +538,9 @@ list_min (struct list *list, list_less_func *less, void *aux)
 
 /* Pintos 0-2 Project */
 
-/* Find list begin using list_elem */
-struct list_elem * list_begin_listElem (struct list_elem* a) {
-  struct list_elem* mov = a;
-  while (mov->prev != NULL) {
-    mov = mov->prev;
-  }
-  return mov;
-}
-
 /* Swaps position of two list_elems */
 void list_swap(struct list_elem* a, struct list_elem* b) {
   ASSERT(is_interior(a) && is_interior(b)); //Head, Tail이 아닌지 확인한다.
-
-  struct list_elem* temp = NULL; //Pointer swap을 위한 temp
-
-  temp = a->prev;
-  a->prev = b->prev;
-  b->prev = temp;
-
-  temp = a->next;
-  a->next = b->next;
-  b->next = temp;
-  // struct list_elem* begin_a = list_begin_listElem(a); //a, b의 값에 접근하기 위해서 head를 찾는다.
-  // struct list_elem* begin_b = list_begin_listElem(b);
 
   struct node* value_a = list_entry(a, struct node, elem); //a, b의 value를 찾는다.
   struct node* value_b = list_entry(b, struct node, elem);
@@ -581,7 +560,8 @@ void list_shuffle(struct list* list) {
   struct list* newList = malloc(sizeof(struct list)); //shuffle된 list를 담는 새로운 list pointer
   list_init(newList);
 
-  while (!list_empty(list)) { 
+  int num = 0;
+  while (!list_empty(list)) { //list가 비기 전까지 전부 꺼낸다.
     hop = rand() % 10 + 1;
     mov = list_begin(list); 
 
@@ -592,10 +572,13 @@ void list_shuffle(struct list* list) {
 
     struct node* temp = malloc(sizeof(struct node)); //새로운 node를 만든 뒤, 데이터를 집어 넣는다.
     temp->data = list_entry(mov, struct node, elem)->data;
-    list_insert(list_head(newList), &(temp->elem));
+    list_insert(list_begin(newList), &(temp->elem));
 
     list_remove(mov); //list에서 삭제한다.
+    num++;
   }
+
+  list_splice(list_tail(list), list_begin(newList), list_tail(newList)); //newList의 모든 노드를 다시 원래 list로 돌려 놓는다.
 }
 
 /* Iterates list forwardly and print datas in the list_elem */
