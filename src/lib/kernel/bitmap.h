@@ -48,4 +48,8 @@ bool bitmap_write (const struct bitmap *, struct file *);
 /* Debugging. */
 void bitmap_dump (const struct bitmap *);
 
+/* Pintos 0-2 Project */
+void bitmap_print (const struct bitmap *);
+struct bitmap *bitmap_expand(struct bitmap *bitmap, int size);
+
 #endif /* lib/kernel/bitmap.h */

@@ -473,5 +473,5 @@ void hash_action_triple(struct hash_elem *e, void* aux) {
 
 /* Customized hash function */
 unsigned hash_int_2 (int i) {
-  
+  return 0;
 }

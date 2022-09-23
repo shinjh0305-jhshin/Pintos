@@ -374,3 +374,32 @@ bitmap_dump (const struct bitmap *b)
   hex_dump (0, b->bits, byte_cnt (b->bit_cnt)/2, false);
 }
 
+/* Pintos 0-2 Project */
+/* Prints bitmap */
+void bitmap_print (const struct bitmap *bitmap) {
+  size_t bits = bitmap->bit_cnt;
+
+  for (size_t i = 0; i < bits; i++) {
+    if (*(bitmap->bits) & (1 << i)) {
+      printf("1");
+    }
+    else printf("0");
+  }
+
+  printf("\n");
+}
+
+/* Expands bitmap backwards */
+struct bitmap *bitmap_expand(struct bitmap *bitmap, int size) {
+  struct bitmap* temp = bitmap_create(bitmap->bit_cnt + size);
+ 
+  size_t bitmapSize = bitmap->bit_cnt;
+
+  for (size_t i = 0; i < bitmapSize; i++) {
+    if (*(bitmap->bits) & (1 << i)) {
+      bitmap_mark(temp, i);
+    }
+  }
+
+  return temp;
+}
