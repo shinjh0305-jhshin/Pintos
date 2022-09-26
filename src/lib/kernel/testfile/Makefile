@@ -1,2 +1,4 @@
 clean:
-	rm testlib
+	rm *.output
+	rm *.result
+	rm Score.txt

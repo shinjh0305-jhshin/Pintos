@@ -261,12 +261,14 @@ void do_bitmap(char* operation) {
         scanf("%zu %zu", &startIdx, &sz);
 
         if (operation[8] == 'l') { //all
-            bitmap_set_multiple(bitmap_pool[bmIdx], startIdx, sz, true);
-        }
-        else if (operation[8] == 'n') { //any
             if (bitmap_all(bitmap_pool[bmIdx], startIdx, sz)) printf("true\n"); 
             else printf("false\n");
         }
+        else if (operation[8] == 'n') { //any
+            if (bitmap_any(bitmap_pool[bmIdx], startIdx, sz)) printf("true\n");
+            else printf("false\n");
+        }
+    
     }
     else if (operation[7] == 'c') { //contains, count
         size_t startIdx, sz; //from ,to
@@ -318,23 +320,18 @@ void do_bitmap(char* operation) {
         char testValue[8]; //boolean value
         bool value; //testValue into boolean type
 
-        scanf("%zu %zu %s", &startIdx, &sz, testValue);
-
-        value = testValue[0] == 't' ? true : false;
-
         if (operation[8] == 'c') { //scan or scan_and_flip
+            scanf("%zu %zu %s", &startIdx, &sz, testValue);
+            value = testValue[0] == 't' ? true : false;
+
             if (strlen(operation) < 15) { //scan
-                bitmap_scan(bitmap_pool[bmIdx], startIdx, sz, value);
+                printf("%zu\n", bitmap_scan(bitmap_pool[bmIdx], startIdx, sz, value));
             }
             else { //scan_and_flip
-                bitmap_scan_and_flip(bitmap_pool[bmIdx], startIdx, sz, value);
+                printf("%zu\n", bitmap_scan_and_flip(bitmap_pool[bmIdx], startIdx, sz, value));
             }
         }
         else if (operation[8] == 'e') {
-            size_t startIdx, sz; //from ,to
-            char testValue[8]; //boolean value
-            bool value; //testValue into boolean type
-
             if (strlen(operation) == 10) { //set
                 scanf("%zu %s", &startIdx, testValue);
                 value = testValue[0] == 't' ? true : false;
@@ -354,6 +351,14 @@ void do_bitmap(char* operation) {
                 bitmap_set_multiple(bitmap_pool[bmIdx], startIdx, sz, value);
             }
         }
+        else if (operation[8] == 'i') { //size
+            printf("%zu\n", bitmap_size(bitmap_pool[bmIdx]));
+        }
+    }
+    else if (operation[7] == 't') { //test
+        scanf("%d", &value);
+        if (bitmap_test(bitmap_pool[bmIdx], value)) printf("true\n");
+        else printf("false\n");
     }
 }
 

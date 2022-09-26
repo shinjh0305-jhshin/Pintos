@@ -6,7 +6,9 @@
    See hash.h for basic information. */
 
 #include "hash.h"
+#include "round.h"
 #include <stdio.h>
+#include <math.h>
 #include <assert.h>	// Instead of 	#include "../debug.h"
 #include <stdlib.h>	//		#include "threads/malloc.h"
 
@@ -472,6 +474,11 @@ void hash_action_triple(struct hash_elem *e, void* aux) {
 }
 
 /* Customized hash function */
-unsigned hash_int_2 (int i) {
-  return 0;
+unsigned hash_int_2 (int key) {
+	double s = key * (sqrt(5) - 1) / 2;
+	double x = s - (int)(s / 1);
+	
+	int num = ROUND_DOWN(1024 * x, 1);
+	
+  return num;
 }
