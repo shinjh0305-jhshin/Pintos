@@ -1,10 +1,5 @@
 #include "list.h"
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-#include <assert.h>	// Instead of	#include "../debug.h"
-#define ASSERT(CONDITION) assert(CONDITION)	// patched for proj0-2
+#include "../debug.h"
 
 /* Our doubly linked lists have two header elements: the "head"
    just before the first element and the "tail" just after the
@@ -37,7 +32,7 @@
    operations, which can be valuable.) */
 
 static bool is_sorted (struct list_elem *a, struct list_elem *b,
-                       list_less_func *less, void *aux);// Remove KERNEL MACRO 'UNUSED';
+                       list_less_func *less, void *aux) UNUSED;
 
 /* Returns true if ELEM is a head, false otherwise. */
 static inline bool
@@ -61,7 +56,7 @@ is_tail (struct list_elem *elem)
   return elem != NULL && elem->prev != NULL && elem->next == NULL;
 }
 
-/* Initializes LIST as an empty list. */
+/* Initializes LIST as an empty list. 반드시 초기화해야한다.*/
 void
 list_init (struct list *list)
 {
@@ -227,21 +222,13 @@ list_push_back (struct list *list, struct list_elem *elem)
 /* Removes ELEM from its list and returns the element that
    followed it.  Undefined behavior if ELEM is not in a list.
 
-   It's not safe to treat ELEM as an element in a list after
-   removing it.  In particular, using list_next() or list_prev()
-   on ELEM after removal yields undefined behavior.  This means
-   that a naive loop to remove the elements in a list will fail:
+   A list element must be treated very carefully after removing
+   it from its list.  Calling list_next() or list_prev() on ELEM
+   will return the item that was previously before or after ELEM,
+   but, e.g., list_prev(list_next(ELEM)) is no longer ELEM!
 
-   ** DON'T DO THIS **
-   for (e = list_begin (&list); e != list_end (&list); e = list_next (e))
-     {
-       ...do something with e...
-       list_remove (e);
-     }
-   ** DON'T DO THIS **
-
-   Here is one correct way to iterate and remove elements from a
-   list:
+   The list_remove() return value provides a convenient way to
+   iterate and remove elements from a list:
 
    for (e = list_begin (&list); e != list_end (&list); e = list_remove (e))
      {
@@ -534,79 +521,4 @@ list_min (struct list *list, list_less_func *less, void *aux)
           min = e; 
     }
   return min;
-}
-
-/* Pintos 0-2 Project */
-
-/* Swaps position of two list_elems */
-void list_swap(struct list_elem* a, struct list_elem* b) {
-  ASSERT(is_interior(a) && is_interior(b)); //Head, Tail이 아닌지 확인한다.
-
-  struct node* value_a = list_entry(a, struct node, elem); //a, b의 value를 찾는다.
-  struct node* value_b = list_entry(b, struct node, elem);
-
-  int tempValue = value_a->data; //value를 swap 한다.
-  value_a->data = value_b->data;
-  value_b->data = tempValue;
-}
-
-/* Randomly shuffles the order of list_elem in list */
-void list_shuffle(struct list* list) {
-  srand(time(NULL));
-
-  int hop; //node 몇 개 건너뛸지 
-  struct list_elem* mov = NULL; //list를 탐색하는 iterator
-
-  struct list* newList = malloc(sizeof(struct list)); //shuffle된 list를 담는 새로운 list pointer
-  list_init(newList);
-
-  int num = 0;
-  while (!list_empty(list)) { //list가 비기 전까지 전부 꺼낸다.
-    hop = rand() % 10 + 1;
-    mov = list_begin(list); 
-
-    while (hop--) { //hop칸 만큼 iteration한 뒤 나오는 list_elem을 mov에 저장한다.
-      if (is_tail(list_next(mov))) mov = list_begin(list); //다음 칸이 tail일 경우 맨 앞으로 데려간다.
-      else mov = list_next(mov);
-    }
-
-    struct node* temp = malloc(sizeof(struct node)); //새로운 node를 만든 뒤, 데이터를 집어 넣는다.
-    temp->data = list_entry(mov, struct node, elem)->data;
-    list_insert(list_begin(newList), &(temp->elem));
-
-    list_remove(mov); //list에서 삭제한다.
-    num++;
-  }
-
-  list_splice(list_tail(list), list_begin(newList), list_tail(newList)); //newList의 모든 노드를 다시 원래 list로 돌려 놓는다.
-}
-
-/* Iterates list forwardly and print datas in the list_elem */
-void list_print(struct list* list) {
-  if (list_empty(list)) return; //빈 list일 경우, 개행문자도 출력하지 말고 return 한다.
-
-  struct list_elem* mov = list_begin(list);
-
-  while (mov != list_tail(list)) {
-    printf("%d ", list_entry(mov, struct node, elem)->data);
-    mov = list_next(mov);
-  }
-
-  printf("\n");
-}
-
-/* Removes all nodes from the list */
-void list_free(struct list* list) {
-  while (!list_empty(list)) {
-    list_remove(list_begin(list));
-  }
-}
-
-/* Compares given list_elem */
-bool list_compare(const struct list_elem *a, const struct list_elem *b, void *aux) {
-  int value_a = list_entry(a, struct node, elem)->data;
-  int value_b = list_entry(b, struct node, elem)->data;
-
-  if (value_a < value_b) return true;
-  else return false;
 }

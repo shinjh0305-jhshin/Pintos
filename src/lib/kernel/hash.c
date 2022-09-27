@@ -6,13 +6,8 @@
    See hash.h for basic information. */
 
 #include "hash.h"
-#include "round.h"
-#include <stdio.h>
-#include <math.h>
-#include <assert.h>	// Instead of 	#include "../debug.h"
-#include <stdlib.h>	//		#include "threads/malloc.h"
-
-#define ASSERT(CONDITION) assert(CONDITION)	// patched for proj0-2
+#include "../debug.h"
+#include "threads/malloc.h"
 
 #define list_elem_to_hash_elem(LIST_ELEM)                       \
         list_entry(LIST_ELEM, struct hash_elem, list_elem)
@@ -433,52 +428,3 @@ remove_elem (struct hash *h, struct hash_elem *e)
   list_remove (&e->list_elem);
 }
 
-/* Pintos 0-2 Project */
-/* hash_function*/
-unsigned int hash_function(const struct hash_elem *e, void *aux) {
-  return hash_int(hash_entry(e, struct hash_node, elem)->data);
-}
-
-/* hash_less_function */
-bool hash_compare(const struct hash_elem *a, const struct hash_elem *b, void *aux) { 
-  int value_a = hash_entry(a, struct hash_node, elem)->data;
-  int value_b = hash_entry(b, struct hash_node, elem)->data;
-
-  if (value_a < value_b) return true;
-  else return false;
-}
-
-/* hash action function 중, hash 데이터 출력하는 함수 
-  hash_apply와 함께 쓰인다.
-*/
-void hash_action_print(struct hash_elem *e, void *aux) { 
-  printf("%d ", hash_entry(e, struct hash_node, elem)->data);
-}
-
-/* hash action function 중, 원소값을 2승 하는 함수
-  hasn_apply와 함께 쓰인다.
-*/
-void hash_action_square(struct hash_elem *e, void* aux) {
-  struct hash_node* temp = hash_entry(e, struct hash_node, elem);
-
-  temp->data = temp->data * temp->data;
-}
-
-/* hash action function 중, 원소값을 3승 하는 함수
-  hasn_apply와 함께 쓰인다.
-*/
-void hash_action_triple(struct hash_elem *e, void* aux) {
-  struct hash_node* temp = hash_entry(e, struct hash_node, elem);
-
-  temp->data = temp->data * temp->data * temp->data;
-}
-
-/* Customized hash function */
-unsigned hash_int_2 (int key) {
-	double s = key * (sqrt(5) - 1) / 2;
-	double x = s - (int)(s / 1);
-	
-	int num = ROUND_DOWN(1024 * x, 1);
-	
-  return num;
-}

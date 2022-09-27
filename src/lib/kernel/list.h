@@ -93,12 +93,6 @@ struct list_elem
     struct list_elem *next;     /* Next list element. */
   };
 
-/* List item. */
-struct node {
-  struct list_elem elem;
-  int data;
-};
-
 /* List. */
 struct list 
   {
@@ -114,6 +108,19 @@ struct list
 #define list_entry(LIST_ELEM, STRUCT, MEMBER)           \
         ((STRUCT *) ((uint8_t *) &(LIST_ELEM)->next     \
                      - offsetof (STRUCT, MEMBER.next)))
+
+/* List initialization.
+
+   A list may be initialized by calling list_init():
+
+       struct list my_list;
+       list_init (&my_list);
+
+   or with an initializer using LIST_INITIALIZER:
+
+       struct list my_list = LIST_INITIALIZER (my_list); */
+#define LIST_INITIALIZER(NAME) { { NULL, &(NAME).tail }, \
+                                 { &(NAME).head, NULL } }
 
 void list_init (struct list *);
 
@@ -151,7 +158,7 @@ bool list_empty (struct list *);
 
 /* Miscellaneous. */
 void list_reverse (struct list *);
-
+
 /* Compares the value of two list elements A and B, given
    auxiliary data AUX.  Returns true if A is less than B, or
    false if A is greater than or equal to B. */
@@ -170,12 +177,5 @@ void list_unique (struct list *, struct list *duplicates,
 /* Max and min. */
 struct list_elem *list_max (struct list *, list_less_func *, void *aux);
 struct list_elem *list_min (struct list *, list_less_func *, void *aux);
-
-/* Pintos 0-2 Project */
-void list_swap(struct list_elem *a, struct list_elem *b);
-void list_shuffle(struct list* list);
-void list_print(struct list* list);
-void list_free(struct list* list);
-bool list_compare(const struct list_elem *a, const struct list_elem *b, void *aux);
 
 #endif /* lib/kernel/list.h */
