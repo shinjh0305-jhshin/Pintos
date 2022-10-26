@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "lib/stdio.h" //for hex_dump()
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -26,7 +27,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name) 
+process_execute (const char *file_name)  /*****************************************'echo x'가 도착한 상태*/
 {
   char *fn_copy;
   tid_t tid;
@@ -39,8 +40,8 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy); /********************process를 시작한다(fork, exec) 진행?*/
+  if (tid == TID_ERROR) 
     palloc_free_page (fn_copy); 
   return tid;
 }
@@ -48,10 +49,10 @@ process_execute (const char *file_name)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *file_name_)/*'echo x'가 도착함*/
 {
   char *file_name = file_name_;
-  struct intr_frame if_;
+  struct intr_frame if_; /*레지스터에 관한 한 전역변수로 작동한다.*/
   bool success;
 
   /* Initialize interrupt frame and load executable. */
@@ -59,7 +60,7 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (file_name, &if_.eip, &if_.esp);/******************************************'echo x'를 전달, esp를 포인터로 전달*/
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -88,6 +89,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  while(1);
   return -1;
 }
 
@@ -216,10 +218,29 @@ load (const char *file_name, void (**eip) (void), void **esp)
   int i;
 
   /* Allocate and activate page directory. */
-  t->pagedir = pagedir_create ();
+  t->pagedir = pagedir_create (); //page directory를 만든다.
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
+
+  /*Pintos 1_User program_Parse argv --------------------------------- STARTS HERE*/
+  //목표 : file_name에 있는 argument 파싱
+
+  char* token, *save_ptr; //token : get token from strtok, save_ptr : for strtok_r
+  int argc = 0; //argc : arguments at file_name
+  char argv[50][50]; //argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
+
+  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+    token = strtok_r (NULL, " \n", &save_ptr)) { //delimiter : spacebar, newline
+
+    strlcpy(argv[argc], token, 50); //argv에 저장
+
+    //for debugging
+    //printf("argv[%d] : %s\n", argc, argv[argc]);
+
+    argc++;
+  }
+  /*Pintos 1_User program_Parse argv --------------------------------- ENDS HERE*/
 
   /* Open executable file. */
   file = filesys_open (file_name);
@@ -304,6 +325,47 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* Set up stack. */
   if (!setup_stack (esp))
     goto done;
+  
+  /*Pintos 1_User program_Parse argv --------------------------------- STARTS HERE*/
+  //목표 : argv에 저장 된 argc개의 argument를 스택에 쌓는다.
+  //esp : uint32_t 현재 esp : void** esp
+
+  int len_argv = 0; //total argv length used for word-align
+  void* startesp = *esp; //for hex_dump
+  void* argAddrInStack[50]; //start address of each args in stack
+
+  for (int curArg = argc - 1; curArg >= 0; curArg--) { //curArg : 현재 작업중인 argv index
+    **(char**)esp = '\0'; //null terminate
+    (*esp)--;
+    
+    int len_cur_arg = strlen(argv[curArg]); //insert argv
+    for (int curChar = len_cur_arg - 1; curChar >= 0; curChar--) {
+      **(char**)esp = argv[curArg][curChar];
+      (*esp)--;
+    }
+    argAddrInStack[curArg] = *esp; //end address of curArg in stack
+    len_argv += len_cur_arg + 1;
+  }
+  
+  if (len_argv % 4) { //word-align
+    *esp -= (4- len_argv % 4);
+  }
+
+  (*esp) -= 4; //NULL pointer sentinel
+ 
+	for (i = argc - 1; i >= 0; i--) { //argv address
+		*esp -= 4;
+		*(uint32_t**)*esp = argAddrInStack[i];
+	}
+
+  *(uint32_t**)*esp = *esp + 4; //argv start point
+  *esp -= 4;
+
+  *(uint32_t**)*esp = argc; //arguments
+  *esp -= 4; //return address
+
+  hex_dump(*esp, *esp, startesp - *esp, true);
+  /*Pintos 1_User program_Parse argv --------------------------------- ENDS HERE*/
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
