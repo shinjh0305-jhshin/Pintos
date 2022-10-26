@@ -22,12 +22,38 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+/*Pintos 1_User program_Search & Delete child process --------------------------------- STARTS HERE*/
+//child 중에 tid로 pid를 갖는 프로세스가 있는지 찾는다. 있으면 thread address, 없으면 NULL을 리턴한다.
+struct thread* get_child_process(int pid) {
+  struct thread* thread = thread_current();
+
+  struct list_elem* mov = list_begin(&(thread->child_list));
+  struct list_elem* end = list_tail(&thread);
+
+  while (mov != end) {
+    struct thread* temp = list_entry(mov, struct thread, child);
+    if (temp->tid == pid) {
+      return temp;
+    }
+    mov = mov->next;
+  }
+
+  return NULL;
+}
+
+//부모 프로세스에서 자식을 제거한다.
+void remove_child_process(struct thread* cp) {
+  list_remove(&(cp->child));
+  palloc_free_page(cp);
+}
+/*Pintos 1_User program_Search & Delete child process --------------------------------- ENDS HERE*/
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name)  /*****************************************'echo x'가 도착한 상태*/
+process_execute (const char *file_name)  //'echo x'가 도착한 상태
 {
   char *fn_copy;
   tid_t tid;
@@ -39,8 +65,11 @@ process_execute (const char *file_name)  /**************************************
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy); /********************process를 시작한다(fork, exec) 진행?*/
+  /* Create a new thread to execute FILE_NAME. */ 
+  /*Pintos 1_User program_Create thread --------------------------------- STARTS HERE*/
+  tid = thread_create("userProcess", PRI_DEFAULT, start_process, fn_copy); //스레드 생성 후 ready list에 추가
+  /*Pintos 1_User program_Create thread --------------------------------- ENDS HERE*/
+  
   if (tid == TID_ERROR) 
     palloc_free_page (fn_copy); 
   return tid;
@@ -60,12 +89,24 @@ start_process (void *file_name_)/*'echo x'가 도착함*/
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);/******************************************'echo x'를 전달, esp를 포인터로 전달*/
+  success = load (file_name, &if_.eip, &if_.esp); //'echo x' 파싱 & 스택에 넣으러 간다.
+
+  /*Pintos 1_User program_Resume parent process --------------------------------- STARTS HERE*/
+  struct thread* thread = thread_current();
+  sema_up(&(thread->load));
+  /*Pintos 1_User program_Resume parent process --------------------------------- ENDS HERE*/
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+
+  /*Pintos 1_User program_check if memory is loaded --------------------------------- STARTS HERE*/
+  if (success) {
+    thread->isLoaded = true;
+  } else {
+    thread->isLoaded = false;
+    thread_exit();
+  }
+  /*Pintos 1_User program_check if memory is loaded --------------------------------- ENDS HERE*/
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -73,7 +114,7 @@ start_process (void *file_name_)/*'echo x'가 도착함*/
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory"); //system call 하러 떠난다!
   NOT_REACHED ();
 }
 
@@ -87,10 +128,18 @@ start_process (void *file_name_)/*'echo x'가 도착함*/
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid UNUSED) //부모 프로세스가 자식 프로세스가 종료 될 때까지 기다려야 한다.
 {
-  while(1);
-  return -1;
+  /*Pintos 1_User program_process_wait --------------------------------- STARTS HERE*/
+  struct thread* child = get_child_process(child_tid);
+  if (child == NULL) return -1; //catch error
+
+  int exitStatus = child->exitStatus;
+  sema_down(&(child->exit));
+  remove_child_process(child);
+
+  return exitStatus;
+  /*Pintos 1_User program_process_wait --------------------------------- ENDS HERE*/
 }
 
 /* Free the current process's resources. */

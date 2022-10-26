@@ -4,6 +4,10 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+/*Pintos 1_User program_include --------------------------------- STARTS HERE*/
+#include "threads/synch.h"
+/*Pintos 1_User program_include --------------------------------- ENDS HERE*/
+
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -100,6 +104,15 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+   /*Pintos 1_User program_Customize thread --------------------------------- STARTS HERE*/
+   struct thread* parent; //부모 프로세스
+   struct list child_list; //자식 프로세스
+   struct list_elem child; //자식 element
+   bool isLoaded, isFinished; //프로세스의 프로그램 메모리 적재 유무, 종료 유무
+   struct semaphore exit, load; //exit, load 세마포어
+   int exitStatus; //종료 status
+   /*Pintos 1_User program_Customize thread --------------------------------- ENDS HERE*/
   };
 
 /* If false (default), use round-robin scheduler.

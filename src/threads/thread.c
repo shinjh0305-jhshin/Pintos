@@ -180,7 +180,7 @@ thread_create (const char *name, int priority,
     return TID_ERROR;
 
   /* Initialize thread. */
-  init_thread (t, name, priority);
+  init_thread (t, name, priority); //////자식 스레드를 초기화한다.
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -198,10 +198,15 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  /*Pintos 1_User program_Thread initialization(Parent-Child relationship)--------------------------------- STARTS HERE*/
+    t->parent = thread_current(); //자식 스레드에 부모 스레드 저장
+    list_push_back(&(t->parent->child_list), &(t->child)); //부모 스레드에 자식 스레드 저장    
+  /*Pintos 1_User program_Thread initialization(Parent-Child relationship) --------------------------------- ENDS HERE*/
+
   /* Add to run queue. */
   thread_unblock (t);
 
-  return tid;
+  return tid; //자식 스레드의 tid 리턴
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -291,6 +296,12 @@ thread_exit (void)
      when it calls thread_schedule_tail(). */
   intr_disable ();
   list_remove (&thread_current()->allelem);
+  /*Pintos 1_User program_notice parent process--------------------------------- STARTS HERE*/
+  struct thread* thread = thread_current();
+  thread->isFinished = true;
+  sema_up(&(thread->exit));
+  /*Pintos 1_User program_notice parent process--------------------------------- ENDS HERE*/
+
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -467,6 +478,20 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+
+
+  /*Pintos 1_User program_Thread initialization(User defined) --------------------------------- STARTS HERE*/
+  //세마포어 및 각종 환경변수를 초기화하고, child list도 초기화한다.
+    t->isLoaded = false; //프로그램이 로드되지 않음
+    t->isFinished = false; //프로그램이 종료되지 않음
+
+    //세마포어 초기화
+    sema_init(&(t->exit), 0);
+    sema_init(&(t->load), 0);
+
+    list_init(&(t->child_list)); //child list 초기화
+    t->child.next = t->child.prev = NULL; //child elem 초기화
+  /*Pintos 1_User program_Thread initialization(User defined) --------------------------------- ENDS HERE*/
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -538,7 +563,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      palloc_free_page (prev);
+      //palloc_free_page (prev);
     }
 }
 
