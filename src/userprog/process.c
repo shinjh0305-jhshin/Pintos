@@ -28,14 +28,14 @@ struct thread* get_child_process(int pid) {
   struct thread* thread = thread_current();
 
   struct list_elem* mov = list_begin(&(thread->child_list));
-  struct list_elem* end = list_tail(&thread);
+  struct list_elem* end = list_end(&(thread->child_list));
 
   while (mov != end) {
     struct thread* temp = list_entry(mov, struct thread, child);
     if (temp->tid == pid) {
       return temp;
     }
-    mov = mov->next;
+    mov = list_next(mov);
   }
 
   return NULL;
@@ -43,8 +43,10 @@ struct thread* get_child_process(int pid) {
 
 //부모 프로세스에서 자식을 제거한다.
 void remove_child_process(struct thread* cp) {
+  printf("***************************************check***************************************\n");
   list_remove(&(cp->child));
   palloc_free_page(cp);
+  printf("***************************************remove child end***************************************\n");
 }
 /*Pintos 1_User program_Search & Delete child process --------------------------------- ENDS HERE*/
 
@@ -67,6 +69,7 @@ process_execute (const char *file_name)  //'echo x'가 도착한 상태
 
   /* Create a new thread to execute FILE_NAME. */ 
   /*Pintos 1_User program_Create thread --------------------------------- STARTS HERE*/
+  //debug ok
   tid = thread_create("userProcess", PRI_DEFAULT, start_process, fn_copy); //스레드 생성 후 ready list에 추가
   /*Pintos 1_User program_Create thread --------------------------------- ENDS HERE*/
   
@@ -93,7 +96,7 @@ start_process (void *file_name_)/*'echo x'가 도착함*/
 
   /*Pintos 1_User program_Resume parent process --------------------------------- STARTS HERE*/
   struct thread* thread = thread_current();
-  sema_up(&(thread->load));
+  sema_up(&(thread->load)); //error
   /*Pintos 1_User program_Resume parent process --------------------------------- ENDS HERE*/
 
   /* If load failed, quit. */
@@ -133,9 +136,10 @@ process_wait (tid_t child_tid UNUSED) //부모 프로세스가 자식 프로세�
   /*Pintos 1_User program_process_wait --------------------------------- STARTS HERE*/
   struct thread* child = get_child_process(child_tid);
   if (child == NULL) return -1; //catch error
-
+  //debug ok
   int exitStatus = child->exitStatus;
-  sema_down(&(child->exit));
+  sema_down(&(child->exit)); //error
+  
   remove_child_process(child);
 
   return exitStatus;
@@ -279,7 +283,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   int argc = 0; //argc : arguments at file_name
   char argv[50][50]; //argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
 
-  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+  for (token = strtok_r ((char*)file_name, " ", &save_ptr); token != NULL;
     token = strtok_r (NULL, " \n", &save_ptr)) { //delimiter : spacebar, newline
 
     strlcpy(argv[argc], token, 50); //argv에 저장
@@ -407,11 +411,13 @@ load (const char *file_name, void (**eip) (void), void **esp)
 		*(uint32_t**)*esp = argAddrInStack[i];
 	}
 
-  *(uint32_t**)*esp = *esp + 4; //argv start point
+  **(uint32_t**)esp = **(uint32_t**)esp + 4; //argv start point
   *esp -= 4;
 
-  *(uint32_t**)*esp = argc; //arguments
-  *esp -= 4; //return address
+  **(uint32_t**)esp = argc; //arguments
+  *esp -= 4; 
+
+  **(uint32_t**)esp = 0; //return address
 
   hex_dump(*esp, *esp, startesp - *esp, true);
   /*Pintos 1_User program_Parse argv --------------------------------- ENDS HERE*/

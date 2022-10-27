@@ -181,6 +181,7 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority); //////자식 스레드를 초기화한다.
+  //debug ok
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -205,7 +206,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  //debug ok
   return tid; //자식 스레드의 tid 리턴
 }
 
@@ -482,15 +483,15 @@ init_thread (struct thread *t, const char *name, int priority)
 
   /*Pintos 1_User program_Thread initialization(User defined) --------------------------------- STARTS HERE*/
   //세마포어 및 각종 환경변수를 초기화하고, child list도 초기화한다.
-    t->isLoaded = false; //프로그램이 로드되지 않음
-    t->isFinished = false; //프로그램이 종료되지 않음
+  t->isLoaded = false; //프로그램이 로드되지 않음
+  t->isFinished = false; //프로그램이 종료되지 않음
 
-    //세마포어 초기화
-    sema_init(&(t->exit), 0);
-    sema_init(&(t->load), 0);
+  //세마포어 초기화
+  sema_init(&(t->exit), 0);
+  sema_init(&(t->load), 0);
 
-    list_init(&(t->child_list)); //child list 초기화
-    t->child.next = t->child.prev = NULL; //child elem 초기화
+  list_init(&(t->child_list)); //child list 초기화
+  t->child.next = t->child.prev = NULL; //child elem 초기화
   /*Pintos 1_User program_Thread initialization(User defined) --------------------------------- ENDS HERE*/
 }
 

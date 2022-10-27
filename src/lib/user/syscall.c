@@ -61,6 +61,27 @@
           retval;                                               \
         })
 
+/*Pintos 1_User program_syscall4 --------------------------------- STARTS HERE*/
+/* Invokes syscall NUMBER, passing arguments ARG0, ARG1, ARG2, and
+   ARG3, and returns the return value as an `int'. */
+#define syscall4(NUMBER, ARG0, ARG1, ARG2, ARG3)                               \
+        ({                                                                     \
+          int retval;                                                          \
+          asm volatile                                                         \
+            ("pushl %[arg3]; pushl %[arg2]; pushl %[arg1]; pushl %[arg0]; "    \
+             "pushl %[number]; int $0x30; addl $20, %%esp"                     \
+               : "=a" (retval)                                                 \
+               : [number] "i" (NUMBER),                                        \
+                 [arg0] "r" (ARG0),                                            \
+                 [arg1] "r" (ARG1),                                            \
+                 [arg2] "r" (ARG2),                                            \
+                 [arg3] "r" (ARG3)                                             \
+               : "memory");                                                    \
+          retval;                                                              \
+        })
+/*Pintos 1_User program_syscall4 --------------------------------- ENDS HERE*/
+
+
 void
 halt (void) 
 {
@@ -182,3 +203,13 @@ inumber (int fd)
 {
   return syscall1 (SYS_INUMBER, fd);
 }
+
+/*Pintos 1_User program_user syscall define --------------------------------- STARTS HERE*/
+int fibonacci (int num) {
+  return syscall1 (USR_FIBONACCI, num);
+}
+
+int max_of_four_int (int num1, int num2, int num3, int num4) {
+  return syscall4(USR_MAXOF4, num1, num2, num3, num4);
+}
+/*Pintos 1_User program_user syscall define --------------------------------- ENDS HERE*/
