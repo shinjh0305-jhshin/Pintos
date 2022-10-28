@@ -13,6 +13,7 @@
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -176,11 +177,13 @@ thread_create (const char *name, int priority,
 
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
+
   if (t == NULL)
     return TID_ERROR;
-
+  //printf("Get Page complete. Page not null\n");
   /* Initialize thread. */
   init_thread (t, name, priority); //////자식 스레드를 초기화한다.
+  //printf("Init thread complete.\n");
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -197,15 +200,14 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
-
+  //printf("Alloc frames complete.\n");
   /*Pintos 1_User program_Thread initialization(Parent-Child relationship)--------------------------------- STARTS HERE*/
-    t->parent = thread_current(); //자식 스레드에 부모 스레드 저장
-    list_push_back(&(t->parent->child_list), &(t->child)); //부모 스레드에 자식 스레드 저장    
+ 
   /*Pintos 1_User program_Thread initialization(Parent-Child relationship) --------------------------------- ENDS HERE*/
 
   /* Add to run queue. */
   thread_unblock (t);
-  //debug ok
+  
   return tid; //자식 스레드의 tid 리턴
 }
 
@@ -296,12 +298,6 @@ thread_exit (void)
      when it calls thread_schedule_tail(). */
   intr_disable ();
   list_remove (&thread_current()->allelem);
-  /*Pintos 1_User program_notice parent process--------------------------------- STARTS HERE*/
-  struct thread* thread = thread_current();
-  thread->isFinished = true;
-  sema_up(&(thread->exit));
-  /*Pintos 1_User program_notice parent process--------------------------------- ENDS HERE*/
-
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -467,31 +463,42 @@ init_thread (struct thread *t, const char *name, int priority)
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
-
+  //printf("ASSERT is fine.\n");
   memset (t, 0, sizeof *t);
   t->status = THREAD_BLOCKED;
+  //printf("Memset is fine.\n");
+  /*Pintos 1_User program_thread name --------------------------------- STARTS HERE*/
   strlcpy (t->name, name, sizeof t->name);
+  /*Pintos 1_User program_thread name --------------------------------- ENDS HERE*/
+  //printf("strlcpy is fine.\n");
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-
+  //printf("Another property setting is fine.\n");
   old_level = intr_disable ();
+  //printf("Intr disable is fine.\n");
   list_push_back (&all_list, &t->allelem);
+  //printf("List push is fine.\n");
   intr_set_level (old_level);
-
+  //printf("Intr set level is fine.\n");
 
   /*Pintos 1_User program_Thread initialization(User defined) --------------------------------- STARTS HERE*/
   //세마포어 및 각종 환경변수를 초기화하고, child list도 초기화한다.
-  t->isLoaded = false; //프로그램이 로드되지 않음
-  t->isFinished = false; //프로그램이 종료되지 않음
+  t->exitStatus = -2; 
+  t->exitFlag = false; 
 
   //세마포어 초기화
   sema_init(&(t->exit), 0);
   sema_init(&(t->load), 0);
+  sema_init(&(t->wait), 0);
 
   list_init(&(t->child_list)); //child list 초기화
   t->child.next = t->child.prev = NULL; //child elem 초기화
+
+  t->parent = running_thread(); //자식 스레드에 부모 스레드 저장
+  list_push_back(&(t->parent->child_list), &(t->child)); //부모 스레드에 자식 스레드 저장   
   /*Pintos 1_User program_Thread initialization(User defined) --------------------------------- ENDS HERE*/
+  //printf("User defined is fine. Exiting thread.\n");
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
