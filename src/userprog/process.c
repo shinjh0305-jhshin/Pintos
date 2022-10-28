@@ -43,10 +43,8 @@ struct thread* get_child_process(int pid) {
 
 //부모 프로세스에서 자식을 제거한다.
 void remove_child_process(struct thread* cp) {
-  printf("***************************************check***************************************\n");
   list_remove(&(cp->child));
   palloc_free_page(cp);
-  printf("***************************************remove child end***************************************\n");
 }
 /*Pintos 1_User program_Search & Delete child process --------------------------------- ENDS HERE*/
 
@@ -57,6 +55,7 @@ void remove_child_process(struct thread* cp) {
 tid_t
 process_execute (const char *file_name)  //'echo x'가 도착한 상태
 {
+  //printf("Entering process_execute.\n");
   char *fn_copy;
   tid_t tid;
 
@@ -70,11 +69,16 @@ process_execute (const char *file_name)  //'echo x'가 도착한 상태
   /* Create a new thread to execute FILE_NAME. */ 
   /*Pintos 1_User program_Create thread --------------------------------- STARTS HERE*/
   //debug ok
-  tid = thread_create("userProcess", PRI_DEFAULT, start_process, fn_copy); //스레드 생성 후 ready list에 추가
+  //printf("Calling thread_create in process_execute.\n");
+  char *token, *save_ptr;
+	token = strtok_r(file_name, " ", &save_ptr);
+	tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
+  //printf("Thread_create returned in process_execute.\n");
   /*Pintos 1_User program_Create thread --------------------------------- ENDS HERE*/
   
   if (tid == TID_ERROR) 
     palloc_free_page (fn_copy); 
+  //printf("Exiting process_execute.\n");
   return tid;
 }
 
@@ -83,6 +87,7 @@ process_execute (const char *file_name)  //'echo x'가 도착한 상태
 static void
 start_process (void *file_name_)/*'echo x'가 도착함*/
 {
+  //printf("Starting start_process.\n");
   char *file_name = file_name_;
   struct intr_frame if_; /*레지스터에 관한 한 전역변수로 작동한다.*/
   bool success;
@@ -92,20 +97,23 @@ start_process (void *file_name_)/*'echo x'가 도착함*/
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+  //printf("Calling load in start_process.\n");
   success = load (file_name, &if_.eip, &if_.esp); //'echo x' 파싱 & 스택에 넣으러 간다.
-
+  //printf("Load returned in start_process.\n");
   /*Pintos 1_User program_Resume parent process --------------------------------- STARTS HERE*/
   struct thread* thread = thread_current();
-  sema_up(&(thread->load)); //error
+  sema_up(&(thread->load));
   /*Pintos 1_User program_Resume parent process --------------------------------- ENDS HERE*/
-
+  //printf("Sema up complete\n");
   /* If load failed, quit. */
   palloc_free_page (file_name);
-
+  //printf("File free complete\n");
   /*Pintos 1_User program_check if memory is loaded --------------------------------- STARTS HERE*/
   if (success) {
+    //printf("Loading Success\n");
     thread->isLoaded = true;
   } else {
+    //printf("Loading Fail\n");
     thread->isLoaded = false;
     thread_exit();
   }
@@ -133,6 +141,7 @@ start_process (void *file_name_)/*'echo x'가 도착함*/
 int
 process_wait (tid_t child_tid UNUSED) //부모 프로세스가 자식 프로세스가 종료 될 때까지 기다려야 한다.
 {
+  //printf("Entering process_wait.\n");
   /*Pintos 1_User program_process_wait --------------------------------- STARTS HERE*/
   struct thread* child = get_child_process(child_tid);
   if (child == NULL) return -1; //catch error
@@ -141,7 +150,7 @@ process_wait (tid_t child_tid UNUSED) //부모 프로세스가 자식 프로세�
   sema_down(&(child->exit)); //error
   
   remove_child_process(child);
-
+  //printf("Exiting process_wait.\n");
   return exitStatus;
   /*Pintos 1_User program_process_wait --------------------------------- ENDS HERE*/
 }
@@ -263,6 +272,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 bool
 load (const char *file_name, void (**eip) (void), void **esp) 
 {
+  //printf("Entering load.\n");
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
@@ -283,8 +293,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   int argc = 0; //argc : arguments at file_name
   char argv[50][50]; //argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
 
-  for (token = strtok_r ((char*)file_name, " ", &save_ptr); token != NULL;
-    token = strtok_r (NULL, " \n", &save_ptr)) { //delimiter : spacebar, newline
+  for (token = strtok_r (file_name, "' '\n", &save_ptr); token != NULL;
+    token = strtok_r (NULL, "' '\n", &save_ptr)) { //delimiter : spacebar, newline
 
     strlcpy(argv[argc], token, 50); //argv에 저장
 
@@ -388,13 +398,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   void* argAddrInStack[50]; //start address of each args in stack
 
   for (int curArg = argc - 1; curArg >= 0; curArg--) { //curArg : 현재 작업중인 argv index
-    **(char**)esp = '\0'; //null terminate
-    (*esp)--;
-    
     int len_cur_arg = strlen(argv[curArg]); //insert argv
-    for (int curChar = len_cur_arg - 1; curChar >= 0; curChar--) {
-      **(char**)esp = argv[curArg][curChar];
+    for (int curChar = len_cur_arg ; curChar >= 0; curChar--) {
       (*esp)--;
+      **(char**)esp = argv[curArg][curChar];
     }
     argAddrInStack[curArg] = *esp; //end address of curArg in stack
     len_argv += len_cur_arg + 1;
@@ -411,15 +418,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
 		*(uint32_t**)*esp = argAddrInStack[i];
 	}
 
-  **(uint32_t**)esp = **(uint32_t**)esp + 4; //argv start point
   *esp -= 4;
-
+  **(uint32_t**)esp = *esp + 4; //argv start point
+  
+  *esp -= 4;
   **(uint32_t**)esp = argc; //arguments
-  *esp -= 4; 
 
+  *esp -= 4; 
   **(uint32_t**)esp = 0; //return address
 
-  hex_dump(*esp, *esp, startesp - *esp, true);
+  //hex_dump(*esp, *esp, startesp - *esp, true);
   /*Pintos 1_User program_Parse argv --------------------------------- ENDS HERE*/
 
   /* Start address. */
@@ -430,6 +438,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  //printf("Exiting load.\n");
   return success;
 }
 

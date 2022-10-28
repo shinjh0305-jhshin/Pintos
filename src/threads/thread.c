@@ -181,7 +181,6 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority); //////자식 스레드를 초기화한다.
-  //debug ok
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */

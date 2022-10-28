@@ -5,6 +5,8 @@
 
 /*Pintos 1_User program_include --------------------------------- STARTS HERE*/
 #include "userprog/process.h"
+#include "devices/shutdown.h"
+#include "devices/input.h"
 #include "userprog/pagedir.h"
 #include "threads/vaddr.h"
 #include <list.h>
@@ -16,19 +18,16 @@ static void syscall_handler (struct intr_frame *);
 /*Pintos 1_User program_Check address, Get Argument --------------------------------- STARTS HERE*/
 //esp가 유효한 주소인지 확인한다.
 void check_address(const void* addr) {
-  void* paddr = vtop(addr);
   uint32_t* pd = thread_current()->pagedir;
 
   //check unmapped memory
   void* mapped_paddr = pagedir_get_page(pd, addr);
-  if (mapped_paddr == NULL || mapped_paddr != paddr) { //unmapoped or fishy mapping
-    printf("Invalid mapping. Exiting process.\n");
+  if (mapped_paddr == NULL) { //unmapoped or fishy mapping
     exit(-1);
   }
 
   //check kernel addr
-  if (is_kernel_vaddr(addr)) {
-    printf("Accessed kernel address. Exiting process.\n");
+  if (!is_user_vaddr(addr)) {
     exit(-1);
   }
 }
@@ -55,9 +54,10 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 { 
+  //printf("Entering syscall_handler.\n");
   int argv[4];
   check_address(f->esp);
-  uint32_t syscallNum = *(uint32_t*)f->esp;
+  uint32_t syscallNum = *(int*)(f->esp);
 
   switch(syscallNum) {
     case SYS_HALT :
@@ -65,7 +65,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_EXIT :
       getArgument(f->esp, argv, 1);
-      exit(argv[0]);
+      exit((void *)argv[0]);
       break;
     case SYS_EXEC :
       getArgument(f->esp, argv, 1);
@@ -77,29 +77,26 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_READ :
       getArgument(f->esp, argv, 3);
-      f->eax = read(argv[0], (void*) argv[1], argv[2]);
+      f->eax = read(argv[0], (void*) argv[1], (unsigned)argv[2]);
       break;
     case SYS_WRITE :
       getArgument(f->esp, argv, 3);
-      f->eax = write(argv[0], (void*) argv[1], argv[2]);
+      f->eax = write(argv[0], (void*) argv[1], (unsigned)argv[2]);
       break;
     case USR_FIBONACCI : 
       getArgument(f->esp, argv, 1);
       f->eax = fibonacci(argv[0]);
-      break;
+      break; 
     case USR_MAXOF4 : 
       getArgument(f->esp, argv, 4);
-      f->eax = max4(argv[0], argv[1], argv[2], argv[3]);
+      f->eax = max_of_four_int(argv[0], argv[1], argv[2], argv[3]);
       break;
     default :
       break;
   }
-
-  printf ("system call!\n");
-  thread_exit ();
 }
 
-/*Pintos 1_User program_exec, wait, exit, halt,    read, write--------------------------------- STARTS HERE*/
+/*Pintos 1_User program_exec, wait, exit, halt, read, write--------------------------------- STARTS HERE*/
 tid_t exec(const char* task) {
   tid_t child_tid = process_execute(task);
   struct thread* child = get_child_process(child_tid);
@@ -131,8 +128,10 @@ void halt() {
 int read(int fd, void* buffer, unsigned size) {
   int len = 0;
 
+  ASSERT(fd == 0);
+
   char ch;
-  for (int i = 0; i < size; i++) {
+  for (unsigned i = 0; i < size; i++) {
     ch = ((char*)buffer)[i] = input_getc();
     if (ch == '\n' || ch == '\0') {
       ((char*)buffer)[i] = '\0';
@@ -147,6 +146,7 @@ int read(int fd, void* buffer, unsigned size) {
 }
 
 int write(int fd, void* buffer, unsigned size) {
+  ASSERT(fd == 1);
   putbuf(buffer, size);
   return size;
 }
@@ -162,7 +162,7 @@ int fibonacci(int num) {
     int fib_1 = 1, fib_2 = 1;
     int temp;
     
-    for (int i = 3; i <= num[0]; i++) {
+    for (int i = 3; i <= num; i++) {
         temp = fib_1 + fib_2;
         fib_1 = fib_2;
         fib_2 = temp;

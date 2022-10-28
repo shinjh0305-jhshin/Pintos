@@ -11,7 +11,7 @@ void getArgument(void* esp, int* arg, int count);
 tid_t exec(const char* task);
 void exit(int status);
 int wait(tid_t tid);
-void halt();
+void halt(void);
 int read(int fd, void* buffer, unsigned size);
 int write(int fd, void* buffer, unsigned size);
 int fibonacci(int num);
