@@ -17,11 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-/*Pintos 1_User program_Customize thread --------------------------------- STARTS HERE*/
 #include "lib/stdio.h" //for hex_dump()
-#include "userprog/syscall.h"
-/*Pintos 1_User program_Customize thread --------------------------------- ENDS HERE*/
-
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -48,7 +44,7 @@ struct thread* get_child_process(int pid) {
 //부모 프로세스에서 자식을 제거한다.
 void remove_child_process(struct thread* cp) {
   list_remove(&(cp->child));
-  //palloc_free_page(cp);
+  palloc_free_page(cp);
 }
 /*Pintos 1_User program_Search & Delete child process --------------------------------- ENDS HERE*/
 
@@ -59,7 +55,6 @@ void remove_child_process(struct thread* cp) {
 tid_t
 process_execute (const char *file_name)  //'echo x'가 도착한 상태
 {
-  //printf("Entering process_execute.\n");
   char *fn_copy;
   tid_t tid;
 
@@ -72,32 +67,14 @@ process_execute (const char *file_name)  //'echo x'가 도착한 상태
 
   /* Create a new thread to execute FILE_NAME. */ 
   /*Pintos 1_User program_Create thread --------------------------------- STARTS HERE*/
-  //printf("Calling thread_create in process_execute.\n");
-	struct thread* thread = thread_current();
-  char *token, *save_ptr;
-	token = strtok_r(file_name, " ", &save_ptr);
-	
-  char new_file_name[50];
-  strlcpy(new_file_name, token, strlen(token) + 1);
+  char cmd_line[100];
+  strlcpy(cmd_line, file_name, strlen(file_name) + 1);
 
-  tid = thread_create (new_file_name, PRI_DEFAULT, start_process, fn_copy);
-  sema_down(&(thread->load));
+	tid = thread_create (cmd_line, PRI_DEFAULT, start_process, fn_copy);
   /*Pintos 1_User program_Create thread --------------------------------- ENDS HERE*/
   
   if (tid == TID_ERROR) 
     palloc_free_page (fn_copy); 
-
-  /*Pintos 1_User program_Process wait --------------------------------- STARTS HERE*/
-  struct list_elem* mov = list_begin(&(thread->child_list));
-  struct list_elem* end = list_end(&(thread->child_list));
-
-  while (mov != end) {
-    struct thread* temp = list_entry(mov, struct thread, child);
-    if(temp->exitStatus < 0) return process_wait(tid);
-    mov = list_next(mov);
-  }
-  /*Pintos 1_User program_Process wait --------------------------------- ENDS HERE*/
-  //printf("Exiting process_execute.\n");
   return tid;
 }
 
@@ -106,7 +83,6 @@ process_execute (const char *file_name)  //'echo x'가 도착한 상태
 static void
 start_process (void *file_name_)/*'echo x'가 도착함*/
 {
-  //printf("Starting start_process.\n");
   char *file_name = file_name_;
   struct intr_frame if_; /*레지스터에 관한 한 전역변수로 작동한다.*/
   bool success;
@@ -116,22 +92,20 @@ start_process (void *file_name_)/*'echo x'가 도착함*/
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  //printf("Calling load in start_process.\n");
+
   success = load (file_name, &if_.eip, &if_.esp); //'echo x' 파싱 & 스택에 넣으러 간다.
-  //printf("Load returned in start_process.\n");
+
   /*Pintos 1_User program_Resume parent process --------------------------------- STARTS HERE*/
   struct thread* thread = thread_current();
-  sema_up(&(thread->parent->load));
+  thread->isLoaded = success;
+  sema_up(&(thread->load));
   /*Pintos 1_User program_Resume parent process --------------------------------- ENDS HERE*/
-  //printf("Sema up complete\n");
+
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  //printf("File free complete\n");
+
   /*Pintos 1_User program_check if memory is loaded --------------------------------- STARTS HERE*/
-  if (!success) {
-    thread->exitFlag = true;
-    exit(-1);
-  }
+  if(!success) thread_exit();
   /*Pintos 1_User program_check if memory is loaded --------------------------------- ENDS HERE*/
 
   /* Start the user process by simulating a return from an
@@ -156,17 +130,14 @@ start_process (void *file_name_)/*'echo x'가 도착함*/
 int
 process_wait (tid_t child_tid UNUSED) //부모 프로세스가 자식 프로세스가 종료 될 때까지 기다려야 한다.
 {
-  //printf("Entering process_wait.\n");
   /*Pintos 1_User program_process_wait --------------------------------- STARTS HERE*/
   struct thread* child = get_child_process(child_tid);
   if (child == NULL) return -1; //catch error
-  //debug ok
-  int exitStatus = child->exitStatus;
-  sema_down(&(child->wait));
-  
+
+  sema_down(&(child->exit));
+  int exitStatus = child->exitStatus;  
   remove_child_process(child);
-  sema_up(&(child->exit));
-  //printf("Exiting process_wait.\n");
+
   return exitStatus;
   /*Pintos 1_User program_process_wait --------------------------------- ENDS HERE*/
 }
@@ -178,11 +149,13 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  /*Pintos 1_User program_check exit status --------------------------------- STARTS HERE*/
-  if (cur->exitStatus == -2) {
-    exit(-1);
+  /*Pintos 1_User program_Delete parent node --------------------------------- STARTS HERE*/
+  struct list_elem* mov;
+  for (mov = list_begin(&cur->child_list); mov != list_end(&cur->child_list); mov = list_next(mov)) {
+    struct thread* child = list_entry(mov, struct thread, child);
+    child->parent = NULL;
   }
-  /*Pintos 1_User program_check exit status --------------------------------- ENDS HERE*/
+  /*Pintos 1_User program_Delete parent node --------------------------------- ENDS HERE*/
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -200,11 +173,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  /*Pintos 1_User program_check exit status --------------------------------- STARTS HERE*/
-  intr_enable();
-  sema_up(&(cur->wait));
-  sema_down(&(cur->exit));
-  /*Pintos 1_User program_check exit status --------------------------------- ENDS HERE*/
 }
 
 /* Sets up the CPU for running user code in the current
@@ -318,16 +286,12 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   char* token, *save_ptr; //token : get token from strtok, save_ptr : for strtok_r
   int argc = 0; //argc : arguments at file_name
-  char argv[50][50]; //argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
+  char* argv[50]; //argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
 
-  for (token = strtok_r (file_name, "' '\n", &save_ptr); token != NULL;
-    token = strtok_r (NULL, "' '\n", &save_ptr)) { //delimiter : spacebar, newline
+  for (token = strtok_r ((char*)file_name, " ", &save_ptr); token != NULL;
+    token = strtok_r (NULL, " ", &save_ptr)) { //delimiter : spacebar
 
-    strlcpy(argv[argc], token, 50); //argv에 저장
-
-    //for debugging
-    //printf("argv[%d] : %s\n", argc, argv[argc]);
-
+    argv[argc] = token; //argv에 저장
     argc++;
   }
   /*Pintos 1_User program_Parse argv --------------------------------- ENDS HERE*/
@@ -416,37 +380,34 @@ load (const char *file_name, void (**eip) (void), void **esp)
   if (!setup_stack (esp))
     goto done;
   
-  /*Pintos 1_User program_Parse argv --------------------------------- STARTS HERE*/
+  /*Pintos 1_User program_Make stack --------------------------------- STARTS HERE*/
   //목표 : argv에 저장 된 argc개의 argument를 스택에 쌓는다.
   //esp : uint32_t 현재 esp : void** esp
 
   int len_argv = 0; //total argv length used for word-align
-  void* startesp = *esp; //for hex_dump
-  void* argAddrInStack[50]; //start address of each args in stack
+  char* argAddrInStack[50]; //start address of each args in stack
 
   for (int curArg = argc - 1; curArg >= 0; curArg--) { //curArg : 현재 작업중인 argv index
-    int len_cur_arg = strlen(argv[curArg]); //insert argv
-    for (int curChar = len_cur_arg ; curChar >= 0; curChar--) {
-      (*esp)--;
-      **(char**)esp = argv[curArg][curChar];
-    }
-    argAddrInStack[curArg] = *esp; //end address of curArg in stack
-    len_argv += len_cur_arg + 1;
+    *esp -= (strlen(argv[curArg]) + 1);
+    strlcpy(*esp, argv[curArg], (strlen(argv[curArg]) + 1));
+    argAddrInStack[curArg] = *esp;
   }
-  
-  if (len_argv % 4) { //word-align
-    *esp -= (4- len_argv % 4);
+
+  size_t align = (size_t)(*esp) % 4;  
+  if (align) { //word-align
+    *esp -= align;
+    memset(*esp, 0, align);
   }
 
   (*esp) -= 4; //NULL pointer sentinel
- 
+  memset(*esp, 0, 4);
 	for (i = argc - 1; i >= 0; i--) { //argv address
 		*esp -= 4;
-		*(uint32_t**)*esp = argAddrInStack[i];
+		**(uint32_t**)esp = (uint32_t)argAddrInStack[i];
 	}
 
   *esp -= 4;
-  **(uint32_t**)esp = *esp + 4; //argv start point
+  **(uint32_t**)esp = (uint32_t)(*esp + 4); //argv start point
   
   *esp -= 4;
   **(uint32_t**)esp = argc; //arguments
@@ -454,8 +415,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *esp -= 4; 
   **(uint32_t**)esp = 0; //return address
 
-  //hex_dump(*esp, *esp, startesp - *esp, true);
-  /*Pintos 1_User program_Parse argv --------------------------------- ENDS HERE*/
+  /*Pintos 1_User program_Make stack --------------------------------- ENDS HERE*/
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;

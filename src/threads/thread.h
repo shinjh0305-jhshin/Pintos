@@ -109,9 +109,9 @@ struct thread
    struct thread* parent; //부모 프로세스
    struct list child_list; //자식 프로세스
    struct list_elem child; //자식 element
-   bool exitFlag; //종료 status
-   struct semaphore exit, load, wait; //exit, load 세마포어
-   int exitStatus, loadStatus; //프로세스의 프로그램 메모리 적재 유무, 종료 유무
+   bool isLoaded; //프로세스의 프로그램 메모리 적재 유무, 종료 유무
+   struct semaphore exit, load; //exit, load 세마포어
+   int exitStatus; //종료 status
    /*Pintos 1_User program_Customize thread --------------------------------- ENDS HERE*/
   };
 

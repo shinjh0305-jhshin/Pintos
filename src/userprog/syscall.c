@@ -20,16 +20,16 @@ static void syscall_handler (struct intr_frame *);
 void check_address(const void* addr) {
   uint32_t* pd = thread_current()->pagedir;
 
-  //check if addr is part of user memory
-  if (addr == NULL || !is_user_vaddr(addr) || (unsigned int *)addr < (unsigned int *) 0x8048000){
-		exit(-1);
-	}
-
   //check unmapped memory
   void* mapped_paddr = pagedir_get_page(pd, addr);
   if (mapped_paddr == NULL) { //unmapoped or fishy mapping
     exit(-1);
   }
+
+  //check kernel addr
+  if (addr == NULL || !is_user_vaddr(addr) || (unsigned int *)addr < (unsigned int *) 0x8048000){
+		exit(-1);
+	}
 }
 
 //argument를 저장한다.
@@ -70,7 +70,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_EXEC :
       getArgument(f->esp, argv, 1);
       check_address((void*)argv[0]);
-      f->eax = exec((char*)argv[0]);
+      f->eax = exec((const char*)argv[0]);
       break;
     case SYS_WAIT : 
       getArgument(f->esp, argv, 1);
@@ -99,10 +99,18 @@ syscall_handler (struct intr_frame *f UNUSED)
 
 /*Pintos 1_User program_exec, wait, exit, halt, read, write--------------------------------- STARTS HERE*/
 tid_t exec(const char* task) {
-  check_address(task);
   tid_t child_tid = process_execute(task);
   
-  return child_tid;
+  if (child_tid == TID_ERROR) return TID_ERROR;
+  
+  struct thread* child = get_child_process(child_tid);
+  
+  sema_down(&(child->load)); //wait
+  if (child->isLoaded == true) {
+    return child_tid;
+  } else {
+    return TID_ERROR;
+  }
 }
 
 void exit(int status) {
