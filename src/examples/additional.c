@@ -4,24 +4,24 @@
 #include <string.h>
 
 int main (int argc, char* argv[]) {
-    int num[4] = { 0 };
+    int num[5] = { 0 };
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 1; i <= 4; i++) {
         int len = strlen(argv[i]);
         for (int j = 0; j < len; j++) {
             num[i] *= 10;
             num[i] += argv[i][j] - '0';
         }
     }
-    int fib, max = num[0];
-
+    int fib, max = num[1];
+    
     //fibonacci
-    if (num[0] <=2) fib = 1;
+    if (num[1] <=2) fib = 1;
     else {
         int fib_1 = 1, fib_2 = 1;
         int temp;
         
-        for (int i = 3; i <= num[0]; i++) {
+        for (int i = 3; i <= num[1]; i++) {
             temp = fib_1 + fib_2;
             fib_1 = fib_2;
             fib_2 = temp;
@@ -31,7 +31,7 @@ int main (int argc, char* argv[]) {
     }
 
     //max
-    for (int i = 1; i < 4; i++) {
+    for (int i = 2; i <= 4; i++) {
         max = num[i] > max ? num[i] : max;
     }
 
