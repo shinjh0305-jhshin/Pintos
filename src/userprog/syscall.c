@@ -1,21 +1,37 @@
 #include "userprog/syscall.h"
 
 #include <stdio.h>
-#include <string.h>
 #include <syscall-nr.h>
 
-/*Pintos 1_User program_include --------------------------------- STARTS HERE*/
-#include <list.h>
-
-#include "devices/input.h"
-#include "devices/shutdown.h"
 #include "threads/interrupt.h"
-#include "threads/synch.h"
 #include "threads/thread.h"
+// modified
+#include "threads/synch.h"
 #include "threads/vaddr.h"
-#include "userprog/pagedir.h"
-#include "userprog/process.h"
-/*Pintos 1_User program_include --------------------------------- ENDS HERE*/
+// #include "userprog/syscall.h"
+
+// #include <stdio.h>
+// #include <string.h>
+// #include <syscall-nr.h>
+
+// /*Pintos 1_User program_include --------------------------------- STARTS HERE*/
+// #include <list.h>
+
+// #include "devices/input.h"
+// #include "devices/shutdown.h"
+// #include "threads/interrupt.h"
+// #include "threads/synch.h"
+// #include "threads/thread.h"
+// #include "threads/vaddr.h"
+// #include "userprog/pagedir.h"
+// #include "userprog/process.h"
+// /*Pintos 1_User program_include --------------------------------- ENDS HERE*/
+
+// ////////////////////////////////////
+// #include "filesys/directory.h"
+// #include "filesys/file.h"
+// #include "filesys/filesys.h"
+// #include "filesys/inode.h"
 
 static void syscall_handler(struct intr_frame *);
 
@@ -23,7 +39,7 @@ static void syscall_handler(struct intr_frame *);
 // esp가 유효한 주소인지 확인한다.
 void check_address(const void *addr) {
     // check kernel addr
-    if (addr == NULL || !is_user_vaddr(addr) || (unsigned int *)addr < (unsigned int *)0x8048000) {
+    if (addr == NULL || !is_user_vaddr(addr) /*|| (unsigned int *)addr < (unsigned int *)0x8048000*/) {
         exit(-1);
     }
 }
@@ -68,7 +84,7 @@ syscall_handler(struct intr_frame *f UNUSED) {
             break;
         case SYS_WAIT:
             getArgument(f->esp, argv, 1);
-            f->eax = wait((tid_t *)argv[0]);
+            f->eax = wait(argv[0]);
             break;
         case SYS_CREATE:
             getArgument(f->esp, argv, 2);
@@ -116,14 +132,6 @@ syscall_handler(struct intr_frame *f UNUSED) {
             break;
         case SYS_YIELD:
             thread_yield();
-            break;
-        case USR_FIBONACCI:
-            getArgument(f->esp, argv, 1);
-            f->eax = fibonacci(argv[0]);
-            break;
-        case USR_MAXOF4:
-            getArgument(f->esp, argv, 4);
-            f->eax = max_of_four_int(argv[0], argv[1], argv[2], argv[3]);
             break;
         default:
             break;
@@ -214,6 +222,7 @@ void halt() {
 }
 
 int read(int fd, void *buffer, unsigned size) {
+    check_address(buffer);
     lock_acquire(&filesys_lock);
     int len = 0;
     if (fd == 0) {
@@ -300,36 +309,3 @@ void sendsig(tid_t pid, int signum) {
     sendsig_thread(pid, signum);
 }
 /*Pintos 1_User program_exec, wait, exit, halt, read, write--------------------------------- ENDS HERE*/
-
-/*Pintos 1_User program_fibonacci, max --------------------------------- STARTS HERE*/
-int fibonacci(int num) {
-    int fib;
-
-    if (num <= 2)
-        fib = 1;
-    else {
-        int fib_1 = 1, fib_2 = 1;
-        int temp;
-
-        for (int i = 3; i <= num; i++) {
-            temp = fib_1 + fib_2;
-            fib_1 = fib_2;
-            fib_2 = temp;
-        }
-
-        fib = fib_2;
-    }
-
-    return fib;
-}
-
-int max_of_four_int(int num1, int num2, int num3, int num4) {
-    int max = num1;
-
-    max = max > num2 ? max : num2;
-    max = max > num3 ? max : num3;
-    max = max > num4 ? max : num4;
-
-    return max;
-}
-/*Pintos 1_User program_fibonacci, max  --------------------------------- ENDS HERE*/

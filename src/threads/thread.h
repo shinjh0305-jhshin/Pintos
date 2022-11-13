@@ -108,10 +108,6 @@ struct thread {
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir; /* Page directory. */
-#endif
-    /* Owned by thread.c. */
-    unsigned magic; /* Detects stack overflow. */
-
     /*Pintos 1_User program_Customize thread --------------------------------- STARTS HERE*/
     struct thread *parent;   //부모 프로세스
     struct list child_list;  //자식 프로세스
@@ -125,6 +121,9 @@ struct thread {
 
     struct signal *save_signal[10];
     /*Pintos 1_User program_Customize thread --------------------------------- ENDS HERE*/
+#endif
+    /* Owned by thread.c. */
+    unsigned magic; /* Detects stack overflow. */
 };
 
 /* If false (default), use round-robin scheduler.

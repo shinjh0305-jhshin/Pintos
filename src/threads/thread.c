@@ -453,6 +453,7 @@ init_thread(struct thread *t, const char *name, int priority) {
     list_push_back(&all_list, &t->allelem);
     intr_set_level(old_level);
 
+#ifdef USERPROG
     /*Pintos 2_User program_Thread initialization(User defined) --------------------------------- STARTS HERE*/
     //세마포어 및 각종 환경변수를 초기화하고, child list도 초기화한다.
 
@@ -477,6 +478,7 @@ init_thread(struct thread *t, const char *name, int priority) {
         t->save_signal[j] = NULL;
     }
     /*Pintos 2_User program_Thread initialization(User defined) --------------------------------- ENDS HERE*/
+#endif
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

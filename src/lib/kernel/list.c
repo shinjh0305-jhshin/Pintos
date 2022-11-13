@@ -56,7 +56,7 @@ is_tail (struct list_elem *elem)
   return elem != NULL && elem->prev != NULL && elem->next == NULL;
 }
 
-/* Initializes LIST as an empty list. 반드시 초기화해야한다.*/
+/* Initializes LIST as an empty list. */
 void
 list_init (struct list *list)
 {

@@ -10,7 +10,6 @@
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
-#include "lib/stdio.h"  //for hex_dump()
 #include "lib/user/syscall.h"
 #include "threads/flags.h"
 #include "threads/init.h"
@@ -297,31 +296,48 @@ bool load(const char *file_name, void (**eip)(void), void **esp) {
         goto done;
     process_activate();
 
+    char file_name_use[128];
+
+    strlcpy(file_name_use, file_name, strlen(file_name) + 1);
+    int argc = 0;
+    char *token, *save_ptr;
+
+    for (token = strtok_r(file_name_use, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+        argc++;
+    }
+
+    char *argv[100];
+    strlcpy(file_name_use, file_name, strlen(file_name) + 1);
+    i = 0;
+    for (token = strtok_r(file_name_use, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+        argv[i] = token;
+        i++;
+    }
     /*Pintos 1_User program_Parse argv --------------------------------- STARTS HERE*/
     //목표 : file_name에 있는 argument 파싱
 
-    char *token, *save_ptr;  // token : get token from strtok, save_ptr : for strtok_r
-    int argc = 0;            // argc : arguments at file_name
-    char *argv[50];          // argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
+    // char *token, *save_ptr;  // token : get token from strtok, save_ptr : for strtok_r
+    // int argc = 0;            // argc : arguments at file_name
+    // char *argv[50];          // argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
 
-    for (token = strtok_r((char *)file_name, " ", &save_ptr); token != NULL;
-         token = strtok_r(NULL, " ", &save_ptr)) {  // delimiter : spacebar
+    // for (token = strtok_r((char *)file_name, " ", &save_ptr); token != NULL;
+    //      token = strtok_r(NULL, " ", &save_ptr)) {  // delimiter : spacebar
 
-        argv[argc] = token;  // argv에 저장
-        argc++;
-    }
+    //     argv[argc] = token;  // argv에 저장
+    //     argc++;
+    // }
     /*Pintos 1_User program_Parse argv --------------------------------- ENDS HERE*/
 
     /* Open executable file. */
     file = filesys_open(argv[0]);
     if (file == NULL) {
-        printf("load: %s: open failed\n", file_name);
+        printf("load: %s: open failed\n", argv[0]);
         goto done;
     }
 
     /* Read and verify executable header. */
     if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\1\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 3 || ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Elf32_Phdr) || ehdr.e_phnum > 1024) {
-        printf("load: %s: error loading executable\n", file_name);
+        printf("load: %s: error loading executable\n", argv[0]);
         goto done;
     }
 
@@ -384,7 +400,7 @@ bool load(const char *file_name, void (**eip)(void), void **esp) {
     //목표 : argv에 저장 된 argc개의 argument를 스택에 쌓는다.
     // esp : uint32_t 현재 esp : void** esp
 
-    char *argAddrInStack[50];  // start address of each args in stack
+    char *argAddrInStack[100];  // start address of each args in stack
 
     for (int curArg = argc - 1; curArg >= 0; curArg--) {  // curArg : 현재 작업중인 argv index
         *esp -= (strlen(argv[curArg]) + 1);
