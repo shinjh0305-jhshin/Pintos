@@ -22,6 +22,7 @@ enum thread_status {
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
+
 #define TID_ERROR ((tid_t)-1) /* Error value for tid_t. */
 
 /* Thread priorities. */
@@ -86,12 +87,10 @@ typedef int tid_t;
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
 
-/*Pintos 2_Signal handler --------------------------------- STARTS HERE*/
 struct signal {
     int signum;
     void (*sig_handler)(void);
 };
-/*Pintos 2_Signal handler --------------------------------- ENDS HERE*/
 
 struct thread {
     /* Owned by thread.c. */
@@ -108,6 +107,8 @@ struct thread {
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir; /* Page directory. */
+                       // Making Child list!!!
+
     /*Pintos 1_User program_Customize thread --------------------------------- STARTS HERE*/
     struct thread *parent;   //부모 프로세스
     struct list child_list;  //자식 프로세스
@@ -116,12 +117,13 @@ struct thread {
     struct semaphore sema_child, sema_memory, sema_exec;
     int exitStatus;  //종료 status
 
-    struct file *fdt[128];
+    struct file *fdt[256];
     int next_fd;
 
     struct signal *save_signal[10];
     /*Pintos 1_User program_Customize thread --------------------------------- ENDS HERE*/
 #endif
+
     /* Owned by thread.c. */
     unsigned magic; /* Detects stack overflow. */
 };
@@ -130,7 +132,7 @@ struct thread {
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
-
+// extra
 void sendsig_thread(tid_t pid, int signum);
 
 void thread_init(void);

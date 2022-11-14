@@ -130,7 +130,7 @@ main (void)
   printf ("Boot complete.\n");
   
   /* Run actions specified on kernel command line. */
-  run_actions (argv); //["run", "echo x"] 넘겨준다.
+  run_actions (argv);
 
   /* Finish up. */
   shutdown ();
@@ -285,7 +285,7 @@ run_task (char **argv)
   
   printf ("Executing '%s':\n", task);
 #ifdef USERPROG
-  process_wait (process_execute (task)); /**************************************'echo x'를 전달한다*/
+  process_wait (process_execute (task));
 #else
   run_test (task);
 #endif
@@ -295,7 +295,7 @@ run_task (char **argv)
 /* Executes all of the actions specified in ARGV[]
    up to the null pointer sentinel. */
 static void
-run_actions (char **argv) //["run", "echo x"] 받음
+run_actions (char **argv) 
 {
   /* An action. */
   struct action 
@@ -328,16 +328,16 @@ run_actions (char **argv) //["run", "echo x"] 받음
       for (a = actions; ; a++)
         if (a->name == NULL)
           PANIC ("unknown action `%s' (use -h for help)", *argv);
-        else if (!strcmp (*argv, a->name)) ////////////////////////////////////////argv[0] 즉 사용자가 보낸 명령이랑 같은 놈 찾음
+        else if (!strcmp (*argv, a->name))
           break;
-      /////////////////////////////////////////////////////////////////////////////사용자가 보낸 명령이랑 같은 놈 찾았다.
+
       /* Check for required arguments. */
       for (i = 1; i < a->argc; i++)
         if (argv[i] == NULL)
           PANIC ("action `%s' requires %d argument(s)", *argv, a->argc - 1);
 
       /* Invoke action and advance. */
-      a->function (argv); //argv를 전달
+      a->function (argv);
       argv += a->argc;
     }
   

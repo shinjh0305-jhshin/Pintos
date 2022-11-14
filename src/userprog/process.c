@@ -10,6 +10,7 @@
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "lib/stdio.h"  //for hex_dump()
 #include "lib/user/syscall.h"
 #include "threads/flags.h"
 #include "threads/init.h"
@@ -54,8 +55,7 @@ void remove_child_process(struct thread *cp) {
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
-tid_t process_execute(const char *file_name)  //'echo x'가 도착한 상태
-{
+tid_t process_execute(const char *file_name) {
     char *fn_copy;
     tid_t tid;
 
@@ -66,7 +66,6 @@ tid_t process_execute(const char *file_name)  //'echo x'가 도착한 상태
         return TID_ERROR;
     strlcpy(fn_copy, file_name, PGSIZE);
 
-    /* Create a new thread to execute FILE_NAME. */
     /*Pintos 1_User program_Create thread --------------------------------- STARTS HERE*/
     char *save_ptr;
     char *token = strtok_r(file_name, " ", &save_ptr);
@@ -81,8 +80,9 @@ tid_t process_execute(const char *file_name)  //'echo x'가 도착한 상태
     sema_down(&(thread->sema_exec));
     /*Pintos 1_User program_Create thread --------------------------------- ENDS HERE*/
 
-    if (tid == TID_ERROR)
+    if (tid == TID_ERROR) {
         palloc_free_page(fn_copy);
+    }
 
     /* Create a new thread to execute FILE_NAME. */
     /*Pintos 1_User program_process wait --------------------------------- STARTS HERE*/
@@ -98,16 +98,16 @@ tid_t process_execute(const char *file_name)  //'echo x'가 도착한 상태
     }
 
     /*Pintos 1_User program_process wait --------------------------------- ENDS HERE*/
+
     return tid;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process(void *file_name_) /*'echo x'가 도착함*/
-{
+start_process(void *file_name_) {
     char *file_name = file_name_;
-    struct intr_frame if_; /*레지스터에 관한 한 전역변수로 작동한다.*/
+    struct intr_frame if_;
     bool success;
 
     /* Initialize interrupt frame and load executable. */
@@ -152,8 +152,7 @@ start_process(void *file_name_) /*'echo x'가 도착함*/
 
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
-int process_wait(tid_t child_tid UNUSED)  //부모 프로세스가 자식 프로세스가 종료 될 때까지 기다려야 한다.
-{
+int process_wait(tid_t child_tid UNUSED) {
     /*Pintos 1_User program_process_wait --------------------------------- STARTS HERE*/
     struct thread *child = get_child_process(child_tid);
     if (child == NULL)
@@ -188,12 +187,14 @@ void process_exit(void) {
         pagedir_activate(NULL);
         pagedir_destroy(pd);
     }
-
+    /*Pintos 2_check fdt --------------------------------- STARTS HERE*/
+    int fd;
     for (int i = 2; i < cur->next_fd; i++) {
         file_close(cur->fdt[i]);
     }
     sema_up(&(cur->sema_child));
     sema_down(&(cur->sema_memory));
+    /*Pintos 2_check fdt --------------------------------- ENDS HERE*/
 }
 
 /* Sets up the CPU for running user code in the current
@@ -296,48 +297,31 @@ bool load(const char *file_name, void (**eip)(void), void **esp) {
         goto done;
     process_activate();
 
-    char file_name_use[128];
-
-    strlcpy(file_name_use, file_name, strlen(file_name) + 1);
-    int argc = 0;
-    char *token, *save_ptr;
-
-    for (token = strtok_r(file_name_use, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
-        argc++;
-    }
-
-    char *argv[100];
-    strlcpy(file_name_use, file_name, strlen(file_name) + 1);
-    i = 0;
-    for (token = strtok_r(file_name_use, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
-        argv[i] = token;
-        i++;
-    }
     /*Pintos 1_User program_Parse argv --------------------------------- STARTS HERE*/
     //목표 : file_name에 있는 argument 파싱
 
-    // char *token, *save_ptr;  // token : get token from strtok, save_ptr : for strtok_r
-    // int argc = 0;            // argc : arguments at file_name
-    // char *argv[50];          // argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
+    char *token, *save_ptr;  // token : get token from strtok, save_ptr : for strtok_r
+    int argc = 0;            // argc : arguments at file_name
+    char *argv[50];          // argv : delimited argument(file_name). malloc이 지원되지 않으므로, 임의의 큰 argv 선언.
 
-    // for (token = strtok_r((char *)file_name, " ", &save_ptr); token != NULL;
-    //      token = strtok_r(NULL, " ", &save_ptr)) {  // delimiter : spacebar
+    for (token = strtok_r((char *)file_name, " ", &save_ptr); token != NULL;
+         token = strtok_r(NULL, " ", &save_ptr)) {  // delimiter : spacebar
 
-    //     argv[argc] = token;  // argv에 저장
-    //     argc++;
-    // }
+        argv[argc] = token;  // argv에 저장
+        argc++;
+    }
     /*Pintos 1_User program_Parse argv --------------------------------- ENDS HERE*/
 
     /* Open executable file. */
     file = filesys_open(argv[0]);
     if (file == NULL) {
-        printf("load: %s: open failed\n", argv[0]);
+        printf("load: %s: open failed\n", file_name);
         goto done;
     }
 
     /* Read and verify executable header. */
     if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\1\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 3 || ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Elf32_Phdr) || ehdr.e_phnum > 1024) {
-        printf("load: %s: error loading executable\n", argv[0]);
+        printf("load: %s: error loading executable\n", file_name);
         goto done;
     }
 
@@ -400,7 +384,7 @@ bool load(const char *file_name, void (**eip)(void), void **esp) {
     //목표 : argv에 저장 된 argc개의 argument를 스택에 쌓는다.
     // esp : uint32_t 현재 esp : void** esp
 
-    char *argAddrInStack[100];  // start address of each args in stack
+    char *argAddrInStack[50];  // start address of each args in stack
 
     for (int curArg = argc - 1; curArg >= 0; curArg--) {  // curArg : 현재 작업중인 argv index
         *esp -= (strlen(argv[curArg]) + 1);

@@ -74,7 +74,6 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
-///////////////////////////////////////////////////////////////////////////////////
 void sendsig_thread(tid_t tid, int signum) {
     struct list_elem *e;
     for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
@@ -92,7 +91,6 @@ void sendsig_thread(tid_t tid, int signum) {
     }
     return;
 }
-////////////////////////////////////////////////////////////////////////////////////////
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -183,6 +181,7 @@ tid_t thread_create(const char *name, int priority,
     struct kernel_thread_frame *kf;
     struct switch_entry_frame *ef;
     struct switch_threads_frame *sf;
+
     tid_t tid;
 
     ASSERT(function != NULL);
@@ -193,7 +192,7 @@ tid_t thread_create(const char *name, int priority,
         return TID_ERROR;
 
     /* Initialize thread. */
-    init_thread(t, name, priority);  //////자식 스레드를 초기화한다.
+    init_thread(t, name, priority);
     tid = t->tid = allocate_tid();
 
     /* Stack frame for kernel_thread(). */
@@ -213,8 +212,8 @@ tid_t thread_create(const char *name, int priority,
 
     /* Add to run queue. */
     thread_unblock(t);
-    // debug ok
-    return tid;  //자식 스레드의 tid 리턴
+
+    return tid;
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -312,7 +311,6 @@ void thread_yield(void) {
         list_push_back(&ready_list, &cur->elem);
     cur->status = THREAD_READY;
     schedule();
-
     intr_set_level(old_level);
 }
 
@@ -545,9 +543,7 @@ void thread_schedule_tail(struct thread *prev) {
        palloc().) */
     if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) {
         ASSERT(prev != cur);
-        /*Pintos 1_User program_free page --------------------------------- STARTS HERE*/
         palloc_free_page(prev);
-        /*Pintos 1_User program_free page --------------------------------- ENDS HERE*/
     }
 }
 
@@ -565,7 +561,6 @@ schedule(void) {
     struct thread *prev = NULL;
 
     ASSERT(intr_get_level() == INTR_OFF);
-
     ASSERT(cur->status != THREAD_RUNNING);
     ASSERT(is_thread(next));
 

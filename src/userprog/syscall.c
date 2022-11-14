@@ -1,61 +1,23 @@
 #include "userprog/syscall.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 
+/*Pintos 1_User program_include --------------------------------- STARTS HERE*/
+#include <list.h>
+
+#include "devices/input.h"
+#include "devices/shutdown.h"
 #include "threads/interrupt.h"
-#include "threads/thread.h"
-// modified
 #include "threads/synch.h"
+#include "threads/thread.h"
 #include "threads/vaddr.h"
-// #include "userprog/syscall.h"
-
-// #include <stdio.h>
-// #include <string.h>
-// #include <syscall-nr.h>
-
-// /*Pintos 1_User program_include --------------------------------- STARTS HERE*/
-// #include <list.h>
-
-// #include "devices/input.h"
-// #include "devices/shutdown.h"
-// #include "threads/interrupt.h"
-// #include "threads/synch.h"
-// #include "threads/thread.h"
-// #include "threads/vaddr.h"
-// #include "userprog/pagedir.h"
-// #include "userprog/process.h"
-// /*Pintos 1_User program_include --------------------------------- ENDS HERE*/
-
-// ////////////////////////////////////
-// #include "filesys/directory.h"
-// #include "filesys/file.h"
-// #include "filesys/filesys.h"
-// #include "filesys/inode.h"
+#include "userprog/pagedir.h"
+#include "userprog/process.h"
+/*Pintos 1_User program_include --------------------------------- ENDS HERE*/
 
 static void syscall_handler(struct intr_frame *);
-
-/*Pintos 1_User program_Check address, Get Argument --------------------------------- STARTS HERE*/
-// esp가 유효한 주소인지 확인한다.
-void check_address(const void *addr) {
-    // check kernel addr
-    if (addr == NULL || !is_user_vaddr(addr) /*|| (unsigned int *)addr < (unsigned int *)0x8048000*/) {
-        exit(-1);
-    }
-}
-
-// argument를 저장한다.
-void getArgument(void *esp, int *arg, int count) {
-    void *mov = esp;
-    mov += 4;
-
-    for (int i = 0; i < count; i++) {
-        check_address(mov);
-        arg[i] = *(int *)mov;
-        mov += 4;
-    }
-}
-/*Pintos 1_User program_Check address, Get Argument --------------------------------- ENDS HERE*/
 
 void syscall_init(void) {
     lock_init(&filesys_lock);
@@ -64,167 +26,196 @@ void syscall_init(void) {
 
 static void
 syscall_handler(struct intr_frame *f UNUSED) {
-    // printf("Entering syscall_handler.\n");
-    int argv[4];
-    check_address(f->esp);
-    uint32_t syscallNum = *(int *)(f->esp);
-
-    switch (syscallNum) {
+    switch (*(uint32_t *)(f->esp)) {
         case SYS_HALT:
             halt();
             break;
+
         case SYS_EXIT:
-            getArgument(f->esp, argv, 1);
-            exit(argv[0]);
+            check_address(f->esp + 4);
+            exit(*(uint32_t *)(f->esp + 4));
             break;
+
         case SYS_EXEC:
-            getArgument(f->esp, argv, 1);
-            check_address((void *)argv[0]);
-            f->eax = exec((const char *)argv[0]);
+            check_address(f->esp + 4);
+            f->eax = exec((const char *)*(uint32_t *)(f->esp + 4));
             break;
+
         case SYS_WAIT:
-            getArgument(f->esp, argv, 1);
-            f->eax = wait(argv[0]);
+            check_address(f->esp + 4);
+            f->eax = wait((pid_t *)*(uint32_t *)(f->esp + 4));
             break;
+
         case SYS_CREATE:
-            getArgument(f->esp, argv, 2);
-            f->eax = create((const char *)argv[0], (unsigned)argv[1]);
+            check_address(f->esp + 4);
+            check_address(f->esp + 8);
+            f->eax = create((const char *)*(uint32_t *)(f->esp + 4), (unsigned)*(uint32_t *)(f->esp + 8));
             break;
+
         case SYS_REMOVE:
-            getArgument(f->esp, argv, 1);
-            f->eax = remove((const char *)argv[0]);
+            check_address(f->esp + 4);
+            f->eax = remove((const char *)*(uint32_t *)(f->esp + 4));
             break;
+
         case SYS_OPEN:
-            getArgument(f->esp, argv, 1);
-            f->eax = open((const char *)argv[0]);
+            check_address(f->esp + 4);
+            f->eax = open((const char *)*(uint32_t *)(f->esp + 4));
             break;
+
         case SYS_FILESIZE:
-            getArgument(f->esp, argv, 1);
-            f->eax = filesize((int)argv[0]);
+            check_address(f->esp + 4);
+            f->eax = filesize((int)*(uint32_t *)(f->esp + 4));
             break;
+
         case SYS_READ:
-            getArgument(f->esp, argv, 3);
-            f->eax = read((int)argv[0], (void *)argv[1], (unsigned)argv[2]);
+            check_address(f->esp + 4);
+            check_address(f->esp + 8);
+            check_address(f->esp + 12);
+            f->eax = read((int)*(uint32_t *)(f->esp + 4), (void *)*(uint32_t *)(f->esp + 8), (unsigned)*(uint32_t *)(f->esp + 12));
             break;
+
         case SYS_WRITE:
-            getArgument(f->esp, argv, 3);
-            f->eax = write((int)argv[0], (void *)argv[1], (unsigned)argv[2]);
+            check_address(f->esp + 4);
+            check_address(f->esp + 8);
+            check_address(f->esp + 12);
+            f->eax = write((int)*(uint32_t *)(f->esp + 4), (void *)*(uint32_t *)(f->esp + 8), (unsigned)*((uint32_t *)(f->esp + 12)));
             break;
+
         case SYS_SEEK:
-            getArgument(f->esp, argv, 2);
-            seek((int)argv[0], (unsigned)argv[1]);
+            check_address(f->esp + 4);
+            check_address(f->esp + 8);
+            seek((int)*(uint32_t *)(f->esp + 4), (unsigned)*(uint32_t *)(f->esp + 8));
             break;
+
         case SYS_TELL:
-            getArgument(f->esp, argv, 1);
-            f->eax = tell((int)argv[0]);
+            check_address(f->esp + 4);
+            f->eax = tell((int)*(uint32_t *)(f->esp + 4));
             break;
+
         case SYS_CLOSE:
-            getArgument(f->esp, argv, 1);
-            close((int)argv[0]);
+            check_address(f->esp + 4);
+            close((int)*(uint32_t *)(f->esp + 4));
             break;
+
         case SYS_SIGACTION:
-            getArgument(f->esp, argv, 2);
-            sigaction((int)argv[0], (void *)argv[1]);
+            check_address(f->esp + 4);
+            check_address(f->esp + 8);
+
+            sigaction((int)*(uint32_t *)(f->esp + 4), (void *)*(uint32_t *)(f->esp + 8));
+
             break;
+
         case SYS_SENDSIG:
-            getArgument(f->esp, argv, 2);
-            sendsig((tid_t)argv[0], (int)argv[1]);
+            check_address(f->esp + 4);
+            check_address(f->esp + 8);
+
+            sendsig((pid_t) * (uint32_t *)(f->esp + 4), (int)*(uint32_t *)(f->esp + 8));
+
             break;
+
         case SYS_YIELD:
             thread_yield();
-            break;
-        default:
             break;
     }
 }
 
-/*Pintos 1_User program_exec, wait, exit, halt, read, write--------------------------------- STARTS HERE*/
-tid_t exec(const char *task) {
-    char *file_name[128];
-    memcpy(file_name, task, strlen(task) + 1);
-    tid_t child_tid = process_execute(file_name);
+void check_address(const void *vaddr) {
+    if (!is_user_vaddr(vaddr) || vaddr == NULL) {
+        exit(-1);
+    }
+}
 
-    return child_tid;
+void halt(void) {
+    shutdown_power_off();
 }
 
 void exit(int status) {
-    struct thread *thread = thread_current();
-    thread->exitStatus = status;
-
-    printf("%s: exit(%d)\n", thread->name, status);
-
+    struct thread *cur = thread_current();
     struct list_elem *e;
-    struct list_elem *begin = list_begin(&(thread->child_list));
-    struct list_elem *end = list_end(&(thread->child_list));
-    for (e = begin; e != end; e = list_next(e)) {
+
+    cur->exitStatus = status;
+    printf("%s: exit(%d)\n", cur->name, status);
+
+    for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
         struct thread *t = list_entry(e, struct thread, child);
         wait(t->tid);
     }
 
     for (int i = 0; i < 10; i++) {
-        if (thread->save_signal[i] == NULL)
+        if (cur->save_signal[i] == NULL)
             break;
-        free(thread->save_signal[i]);
+        free(cur->save_signal[i]);
     }
     thread_exit();
 }
 
-bool create(const char *file, unsigned sz) {
-    if (file == NULL)
+pid_t exec(const char *command) {
+    char *file_name[128];
+    memcpy(file_name, command, strlen(command) + 1);
+    pid_t pid = process_execute(file_name);
+
+    return pid;
+}
+
+int wait(pid_t pid) {
+    return process_wait(pid);
+}
+
+bool create(const char *file, unsigned initial_size) {
+    if (!file)
         exit(-1);
-    return filesys_create(file, sz);
+    lock_acquire(&filesys_lock);
+    bool success = filesys_create(file, initial_size);
+    lock_release(&filesys_lock);
+    return success;
 }
 
 bool remove(const char *file) {
-    if (file == NULL)
-        exit(-1);
-    return filesys_remove(file);
+    lock_acquire(&filesys_lock);
+    bool success = filesys_remove(file);
+    lock_release(&filesys_lock);
+    return success;
 }
 
 int open(const char *file) {
     struct thread *thread = thread_current();
+    int fd = -1;
 
-    if (file == NULL)
+    if (!file)
         exit(-1);
-    lock_acquire(&filesys_lock);
+
+    lock_acquire(&filesys_lock);  ////lock
+
     struct file *open_file = filesys_open(file);
-    lock_release(&filesys_lock);
-    if (open_file == NULL) {
-        return -1;
-    } else {
+    if (open_file != NULL) {
         int next_fd = thread->next_fd;
-        if (next_fd >= 2 && next_fd < 128) {
+        if (next_fd >= 2 && next_fd < 256) {
             if (strcmp(thread->name, file) == 0)
                 file_deny_write(open_file);
             thread->fdt[next_fd] = open_file;
             thread_current()->next_fd = next_fd + 1;
-            return next_fd;
+            fd = next_fd;
         }
     }
-    return -1;
+
+    lock_release(&filesys_lock);  ////lock
+
+    return fd;
 }
 
 int filesize(int fd) {
-    struct thread *thread = thread_current();
-    struct file *file = thread->fdt[fd];
-
+    struct file *file = thread_current()->fdt[fd];
     if (file == NULL)
         return -1;
-    return file_length(file);
-}
-
-int wait(tid_t tid) {
-    return process_wait(tid);
-}
-
-void halt() {
-    shutdown_power_off();
+    off_t length = file_length(file);
+    return length;
 }
 
 int read(int fd, void *buffer, unsigned size) {
     check_address(buffer);
+    int return_val = 0;
     lock_acquire(&filesys_lock);
-    int len = 0;
+
     if (fd == 0) {
         char ch;
         for (unsigned i = 0; i < size; i++) {
@@ -233,65 +224,71 @@ int read(int fd, void *buffer, unsigned size) {
                 ((char *)buffer)[i] = '\0';
                 break;
             } else {
-                len++;
+                return_val++;
             }
         }
     } else {
         struct file *file = thread_current()->fdt[fd];
         if (file == NULL) {
-            lock_release(&filesys_lock);
-            return -1;
+            return_val = -1;
+        } else {
+            return_val = file_read(file, buffer, size);
         }
-        len = file_read(file, buffer, size);
     }
+
     lock_release(&filesys_lock);
-    return len;
+    return return_val;
 }
 
 int write(int fd, const void *buffer, unsigned size) {
+    check_address(buffer);
+    int return_val = -1;
     lock_acquire(&filesys_lock);
 
-    int ret = -1;
     if (fd == 1) {
-        putbuf(buffer, size);
-        ret = size;
+        putbuf((const char *)buffer, size);
+        return_val = size;
     } else {
-        struct file *file = thread_current()->fdt[fd];
-        if (file == NULL) {
-            lock_release(&filesys_lock);
-            return -1;
+        struct file *f_path = thread_current()->fdt[fd];
+        if (f_path != NULL) {
+            return_val = file_write(f_path, buffer, size);
         }
-        ret = file_write(file, buffer, size);
     }
 
     lock_release(&filesys_lock);
-    return ret;
+    return return_val;
 }
 
-void seek(int fd, unsigned pos) {
-    struct file *file = thread_current()->fdt[fd];
-    if (file == NULL) return;
-    return file_seek(file, pos);
+void seek(int fd, unsigned position) {
+    struct file *f_path = thread_current()->fdt[fd];
+    if (f_path != NULL) {
+        file_seek(f_path, position);
+    }
 }
 
 unsigned tell(int fd) {
-    struct file *file = thread_current()->fdt[fd];
-    if (file == NULL) return -1;
-    return file_tell(file);
+    struct file *f_path = thread_current()->fdt[fd];
+    if (f_path == NULL) {
+        return -1;
+    }
+    return file_tell(f_path);
 }
 
 void close(int fd) {
-    struct file *file = thread_current()->fdt[fd];
-    if (file == NULL) return;
-    return file_close(file);
+    if (fd < 2) return;
+    struct file *f_path = thread_current()->fdt[fd];
+    if (f_path == NULL) {
+        return;
+    }
+    file_close(f_path);
     thread_current()->fdt[fd] = NULL;
 }
 
-void sched_yield() {
+void sched_yield(void) {
     thread_yield();
 }
 
-void sigaction(int signum, void (*handler)()) {
+void sigaction(int signum, void (*handler)(void)) {
     struct thread *cur = thread_current();
 
     int i = 0;
@@ -305,7 +302,6 @@ void sigaction(int signum, void (*handler)()) {
     (cur->save_signal[i]) = sig_struct;
 }
 
-void sendsig(tid_t pid, int signum) {
+void sendsig(pid_t pid, int signum) {
     sendsig_thread(pid, signum);
 }
-/*Pintos 1_User program_exec, wait, exit, halt, read, write--------------------------------- ENDS HERE*/
