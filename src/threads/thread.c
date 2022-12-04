@@ -74,24 +74,6 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
-void sendsig_thread(tid_t tid, int signum) {
-    struct list_elem *e;
-    for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
-        struct thread *t = list_entry(e, struct thread, allelem);
-        if (t->tid == tid) {
-            for (int i = 0; i < 10; i++) {
-                if (t->save_signal[i] == NULL)
-                    return;
-                if (t->save_signal[i]->signum == signum) {
-                    printf("Signum: %d, Action: %p\n", signum, t->save_signal[i]->sig_handler);
-                    return;
-                }
-            }
-        }
-    }
-    return;
-}
-
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -471,10 +453,6 @@ init_thread(struct thread *t, const char *name, int priority) {
     t->fdt[0] = 1;
     t->fdt[1] = 2;
     t->next_fd = 2;
-
-    for (int j = 0; j < 10; j++) {
-        t->save_signal[j] = NULL;
-    }
     /*Pintos 2_User program_Thread initialization(User defined) --------------------------------- ENDS HERE*/
 #endif
 }

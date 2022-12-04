@@ -68,7 +68,7 @@ tid_t process_execute(const char *file_name) {
 
     /*Pintos 1_User program_Create thread --------------------------------- STARTS HERE*/
     char *save_ptr;
-    char *token = strtok_r(file_name, " ", &save_ptr);
+    char *token = strtok_r((char *)file_name, " ", &save_ptr);
 
     if (filesys_open(token) == NULL) {
         palloc_free_page(fn_copy);
@@ -188,7 +188,6 @@ void process_exit(void) {
         pagedir_destroy(pd);
     }
     /*Pintos 2_check fdt --------------------------------- STARTS HERE*/
-    int fd;
     for (int i = 2; i < cur->next_fd; i++) {
         file_close(cur->fdt[i]);
     }

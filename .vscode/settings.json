@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "stdlib.h": "c",
-        "synch.h": "c"
+        "synch.h": "c",
+        "filesys.h": "c"
     }
 }

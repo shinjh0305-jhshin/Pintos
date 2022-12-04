@@ -87,11 +87,6 @@ typedef int tid_t;
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
 
-struct signal {
-    int signum;
-    void (*sig_handler)(void);
-};
-
 struct thread {
     /* Owned by thread.c. */
     tid_t tid;                 /* Thread identifier. */
@@ -119,8 +114,6 @@ struct thread {
 
     struct file *fdt[256];
     int next_fd;
-
-    struct signal *save_signal[10];
     /*Pintos 1_User program_Customize thread --------------------------------- ENDS HERE*/
 #endif
 
@@ -132,8 +125,6 @@ struct thread {
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
-// extra
-void sendsig_thread(tid_t pid, int signum);
 
 void thread_init(void);
 void thread_start(void);

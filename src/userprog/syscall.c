@@ -9,6 +9,10 @@
 
 #include "devices/input.h"
 #include "devices/shutdown.h"
+#include "filesys/directory.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
+#include "filesys/inode.h"
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
@@ -43,7 +47,7 @@ syscall_handler(struct intr_frame *f UNUSED) {
 
         case SYS_WAIT:
             check_address(f->esp + 4);
-            f->eax = wait((pid_t *)*(uint32_t *)(f->esp + 4));
+            f->eax = wait((pid_t) * (uint32_t *)(f->esp + 4));
             break;
 
         case SYS_CREATE:
@@ -96,26 +100,6 @@ syscall_handler(struct intr_frame *f UNUSED) {
             check_address(f->esp + 4);
             close((int)*(uint32_t *)(f->esp + 4));
             break;
-
-        case SYS_SIGACTION:
-            check_address(f->esp + 4);
-            check_address(f->esp + 8);
-
-            sigaction((int)*(uint32_t *)(f->esp + 4), (void *)*(uint32_t *)(f->esp + 8));
-
-            break;
-
-        case SYS_SENDSIG:
-            check_address(f->esp + 4);
-            check_address(f->esp + 8);
-
-            sendsig((pid_t) * (uint32_t *)(f->esp + 4), (int)*(uint32_t *)(f->esp + 8));
-
-            break;
-
-        case SYS_YIELD:
-            thread_yield();
-            break;
     }
 }
 
@@ -139,12 +123,6 @@ void exit(int status) {
     for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
         struct thread *t = list_entry(e, struct thread, child);
         wait(t->tid);
-    }
-
-    for (int i = 0; i < 10; i++) {
-        if (cur->save_signal[i] == NULL)
-            break;
-        free(cur->save_signal[i]);
     }
     thread_exit();
 }
@@ -282,26 +260,4 @@ void close(int fd) {
     }
     file_close(f_path);
     thread_current()->fdt[fd] = NULL;
-}
-
-void sched_yield(void) {
-    thread_yield();
-}
-
-void sigaction(int signum, void (*handler)(void)) {
-    struct thread *cur = thread_current();
-
-    int i = 0;
-    while (cur->save_signal[i] != NULL)
-        i++;
-
-    struct signal *sig_struct = (struct signal *)malloc(sizeof(struct signal));
-
-    sig_struct->signum = signum;
-    sig_struct->sig_handler = handler;
-    (cur->save_signal[i]) = sig_struct;
-}
-
-void sendsig(pid_t pid, int signum) {
-    sendsig_thread(pid, signum);
 }
