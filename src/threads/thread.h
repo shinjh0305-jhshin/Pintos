@@ -11,6 +11,10 @@
 #include "filesys/file.h"
 /*Pintos 2_User program_include --------------------------------- ENDS HERE*/
 
+#ifndef USERPROG
+extern bool thread_prior_aging;
+#endif
+
 /* States in a thread's life cycle. */
 enum thread_status {
     THREAD_RUNNING, /* Running thread. */
@@ -99,6 +103,9 @@ struct thread {
     /* Shared between thread.c and synch.c. */
     struct list_elem elem; /* List element. */
 
+    int64_t wakeup_counter;
+    int recent_cpu;
+    int nice;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir; /* Page directory. */
