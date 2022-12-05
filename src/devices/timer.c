@@ -160,7 +160,7 @@ timer_interrupt(struct intr_frame* args UNUSED) {
     struct thread* temp;
     ticks++;
 
-    struct list_elem* mov = list_being(&waiting_list);
+    struct list_elem* mov = list_begin(&waiting_list);
     while (mov != list_end(&waiting_list)) {
         temp = list_entry(mov, struct thread, elem);
         if (ticks < temp->wakeup_counter) {
@@ -172,7 +172,15 @@ timer_interrupt(struct intr_frame* args UNUSED) {
     }
 
     if (thread_prior_aging || thread_mlfqs) {
+        thread_current()->recent_cpu = addInt(thread_current()->recent_cpu, 1);
+        if (!(timer_ticks() % TIMER_FREQ)) {
+            update_cpu();
+        }
+        if (!(timer_ticks() % PRIORITY_FREQ)) {
+            update_priority();
+        }
     }
+    thread_tick();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

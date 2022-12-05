@@ -2,6 +2,10 @@
     "files.associations": {
         "stdlib.h": "c",
         "synch.h": "c",
-        "filesys.h": "c"
+        "filesys.h": "c",
+        "calc.h": "c",
+        "vaddr.h": "c",
+        "inttypes.h": "c",
+        "thread.h": "c"
     }
 }

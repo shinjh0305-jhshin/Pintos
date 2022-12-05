@@ -11,6 +11,7 @@
 #include "filesys/file.h"
 /*Pintos 2_User program_include --------------------------------- ENDS HERE*/
 
+#include "threads/calc.h"
 #ifndef USERPROG
 extern bool thread_prior_aging;
 #endif
@@ -33,6 +34,7 @@ typedef int tid_t;
 #define PRI_MIN 0      /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63     /* Highest priority. */
+#define PRIORITY_FREQ 4
 
 /* A kernel thread or user process.
 
@@ -164,4 +166,7 @@ void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
+int max_priority(void);
+void update_cpu(void);
+void update_priority(void);
 #endif /* threads/thread.h */
